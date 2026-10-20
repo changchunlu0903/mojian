@@ -788,7 +788,7 @@ function dbget(k){return new Promise((resolve,reject)=>{const req=db.transaction
 function dbput(k,v){return new Promise((resolve,reject)=>{const tr=db.transaction('storage','readwrite');tr.objectStore('storage').put(v,k);tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error);tr.onabort=()=>reject(tr.error)})}
 async function init(){try{db=await database()}catch(e){db=null}let raw=null,legacy=null;try{raw=db?await dbget('state_v2'):localStorage.getItem('mojian_writer_v2');if(!raw)legacy=db?await dbget('state'):localStorage.getItem('mojian_writer_v1')}catch(e){}try{if(raw){state=JSON.parse(raw)}else if(legacy){const old=JSON.parse(legacy);state=defaults();state.projects=old.projects||[];state.activeProjectId=old.activeProjectId;state.activeWorldId=old.activeWorldId;state.activeChapterId=old.activeChapterId;state.settings={...state.settings,...(old.settings||{})};state.view='library';}else state=defaults();if(!state||!Array.isArray(state.projects))throw Error('bad');state.settings={...defaults().settings,...state.settings}}catch(e){state=defaults()}consistent();if(!state.workspaceV77Initialized){state.workspaceV77Initialized=true;state.view='library';}applySettings();render();setStatus(raw?'已自动保存':legacy?'已载入旧版作品':'本机自动保存',true);if(!raw)save();}
 function setStatus(message,good=false){const f=$('#focusSave');if(f)f.textContent=message;const n=$('#saveStatus');if(n){n.className='status'+(good?' good':'');n.innerHTML=`${ico(good?'check':'clock','sm')} ${escapeHTML(message)}`}}
-function mark(){setStatus('正在保存…');clearTimeout(saveTimer);saveTimer=setTimeout(save,Math.max(200,Math.min(5000,+state.settings.autosave||400)))}
+function mark(){setStatus('正在保存…');clearTimeout(saveTimer);saveTimer=setTimeout(save,Math.max(200,Math.min(5000,+state.settings.autosave||400)));if(typeof v93ScheduleCloudSync==='function')v93ScheduleCloudSync(1500)}
 function save(){clearTimeout(saveTimer);state.lastSaved=Date.now();let s=JSON.stringify(state);savePromise=savePromise.catch(()=>{}).then(async()=>{try{if(db)await dbput('state_v2',s);else localStorage.setItem('mojian_writer_v2',s);setStatus('已自动保存',true)}catch(e){setStatus('保存失败 · 请导出备份');toast('保存失败，请立即导出完整备份')}});return savePromise}
 function update(msg){proj()&&(proj().updatedAt=Date.now());mark();render();if(msg)toast(msg)}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2500)}
@@ -1418,7 +1418,7 @@ async function v9CloudRequest(method,body){
  const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401){mojianAuthLogout(false)}throw Error(j.error||`云函数返回 HTTP ${r.status}`)}return j;
 }
 let v9CloudBusy=false;
-async function v9UploadCloud(){if(v9CloudBusy)return;v9CloudBusy=true;try{await save();const r=await v9CloudRequest('PUT',{revision:v9Cloud.revision,data:state});v9Cloud.revision=r.revision;v9CloudStore();toast('云端上传完成：修订号 '+r.revision)}catch(e){toast('上传未完成：'+e.message)}finally{v9CloudBusy=false}}
+async function v9UploadCloud(){return v93SyncRun(true)}
 async function v9InspectCloud(){if(v9CloudBusy)return;v9CloudBusy=true;try{const r=await v9CloudRequest('GET');const info=r.data?.projects||[];if(!r.data){toast('云端暂无备份，可以先上传本机稿件');return}if(!confirm(`云端有 ${info.length} 本小说，修订号 ${r.revision}。是否下载该版本到本机？将先备份当前数据，然后替换当前工作区。`))return;v9SaveSnapshot(true);const current=state;try{if(!Array.isArray(r.data.projects)||!Array.isArray(r.data.trash))throw Error('云端数据格式不符合墨间备份');state=r.data;consistent();state.settings={...defaults().settings,...(state.settings||{})};state.view='library';v9Cloud.revision=r.revision;v9CloudStore();mark();render();toast('已加载云端版本')}catch(e){state=current;toast('导入失败：'+e.message)}}catch(e){toast('云端读取失败：'+e.message)}finally{v9CloudBusy=false}}
 function v9CloudSetup(){mojianAuthShow('login')}
 function showDataCenter(){const p=proj();if(!p)return setView('library');const shots=v9GetSnapshots();const usage=p.usageLog||[];const tokens=usage.reduce((a,x)=>a+(x.inp||0)+(x.out||0),0);
@@ -1501,11 +1501,14 @@ const v93esc=escapeHTML;
 const v93Date=t=>new Date(t||Date.now()).toLocaleString('zh-CN',{hour12:false});
 const v93P=()=>proj();
 const v93Storage='mojian_v93_prefs';
-let v93Prefs={customFont:'',autoSync:false,syncMins:3,treeWidth:232,asideWidth:250,hideTree:false,hideAside:false,priceRules:{},badWords:'',timerMinutes:25,...(()=>{try{return JSON.parse(localStorage.getItem(v93Storage)||'{}')}catch{return{}}})()};
+let v93Prefs={customFont:'',autoSync:true,syncMins:1,treeWidth:232,asideWidth:250,hideTree:false,hideAside:false,priceRules:{},badWords:'',timerMinutes:25,...(()=>{try{return JSON.parse(localStorage.getItem(v93Storage)||'{}')}catch{return{}}})()};
 let v93Fonts=(()=>{try{return JSON.parse(localStorage.getItem('mojian_v93_fonts')||'[]')}catch{return []}})();
 let v93FontURLs=[],v93Timer={deadline:0,started:0,work:0,paused:0,running:false};
 let v93SyncBusy=false,v93SyncMessage='未连接',v93SyncConflict=null;
 const v93SyncKey='mojian_v93_sync_hash';
+// 一次性升级：旧版本默认关闭云同步，这一版默认开启；保留后续由用户主动关闭的选择。
+try{if(!localStorage.getItem('mojian_autosync_migrated_20261020')){v93Prefs.autoSync=true;v93Prefs.syncMins=1;localStorage.setItem(v93Storage,JSON.stringify(v93Prefs));localStorage.setItem('mojian_autosync_migrated_20261020','1')}}catch(e){}
+
 function v93SavePrefs(){localStorage.setItem(v93Storage,JSON.stringify(v93Prefs));v93ApplyPrefs();}
 function v93Ensure(p){if(!p)return;p.mediaAssets=Array.isArray(p.mediaAssets)?p.mediaAssets:[];p.focusSessions=Array.isArray(p.focusSessions)?p.focusSessions:[];p.publicationNotes=Array.isArray(p.publicationNotes)?p.publicationNotes:[];}
 function v93Card(title,txt,inner){return `<section class="card v93-panel"><h3>${title}</h3>${txt?`<p class="sub">${txt}</p>`:''}${inner}</section>`}
@@ -1548,14 +1551,141 @@ function v93PrintBook(){const p=proj();if(!p)return;const root=window.open('','_
 function v93SyncSignature(x){const clean=(x.projects||[]).map(p=>({...p,workspace:{...(p.workspace||{}),lastView:null,lastChapterId:null,lastWorldId:null}}));const str=JSON.stringify({projects:clean,trash:x.trash});let h=2166136261;for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);return String(h>>>0)}
 function v93GetLastHash(){try{return localStorage.getItem(v93SyncKey)||''}catch{return''}}
 function v93SetHash(){localStorage.setItem(v93SyncKey,v93SyncSignature(state))}
-async function v93SyncRun(manual=false){if(v93SyncBusy||!v9Cloud.url||!v9CloudToken())return manual&&toast('请先登录私人云端账号');v93SyncBusy=true;v93SyncMessage='正在检查云端版本';try{await save();const remoteMeta=await v9CloudRequest('META'),remote=Number(remoteMeta.revision)!==Number(v9Cloud.revision)?await v9CloudRequest('GET'):{revision:remoteMeta.revision,data:null},localHash=v93SyncSignature(state),savedHash=v93GetLastHash(),rev=Number(remote.revision)||0,known=Number(v9Cloud.revision)||0;
- if(remote.data&&rev!==known){if(savedHash&&localHash===savedHash){v9SaveSnapshot(true);state=remote.data;consistent();state.settings={...defaults().settings,...(state.settings||{})};v9Cloud.revision=rev;v9CloudStore();v93SetHash();mark();render();v93SyncMessage='已拉取云端新版本 · 修订 '+rev;}else{v93SyncConflict={revision:rev,localHash,cloudBooks:remote.data.projects?.length||0};v93SyncMessage='检测到不同设备的修改，需要人工处理';if(manual)toast('发现云端冲突，请进入云同步页面处理');}}
- else if(localHash!==savedHash||!savedHash){const up=await v9CloudRequest('PUT',{revision:rev,data:state});v9Cloud.revision=up.revision;v9CloudStore();v93SetHash();v93SyncConflict=null;v93SyncMessage='上传成功 · 修订 '+up.revision;}
- else{v93SyncMessage='本机与云端一致 · 修订 '+rev;}
- }catch(e){v93SyncMessage='同步未完成：'+e.message;if(manual)toast(v93SyncMessage)}finally{v93SyncBusy=false;if(state.view==='syncStudio')v93ShowSync()}}
+const v93AutoBaseKey='mojian_v93_auto_cloud_base_v1';
+let v93AutoQueue=null, v93AutoSyncRepeat=false, v93AutoLastPoll=0;
+function v93BookFingerprint(p){
+ const w={...p,workspace:{...(p.workspace||{}),lastView:null,lastChapterId:null,lastWorldId:null}};
+ const raw=JSON.stringify(w);let h=2166136261;
+ for(let i=0;i<raw.length;i++)h=Math.imul(h^raw.charCodeAt(i),16777619);
+ return String(h>>>0)+':'+raw.length;
+}
+function v93CloudBaseRead(){try{return JSON.parse(localStorage.getItem(v93AutoBaseKey)||'null')}catch{return null}}
+function v93CloudBaseMake(x,rev){return {revision:rev,books:Object.fromEntries((x.projects||[]).map(p=>[p.id,v93BookFingerprint(p)])),signature:v93SyncSignature(x)}}
+function v93CloudBaseWrite(x,rev){
+ v9Cloud.revision=rev;v9CloudStore();v93SetHash();
+ try{localStorage.setItem(v93AutoBaseKey,JSON.stringify(v93CloudBaseMake(x,rev)))}catch(e){console.warn('Cloud baseline cache unavailable',e)}
+}
+function v93ConflictBook(book,info){
+ const copy=JSON.parse(JSON.stringify(book));copy.id=uid();copy.title=(copy.title||'未命名小说')+'（'+info+'）';
+ return copy;
+}
+function v93MergeBooks(local,remote,base){
+ // No direct deletes or silent overwrites of different manuscripts. Both versions survive concurrent edits.
+ const lm=new Map((local.projects||[]).map(p=>[p.id,p]));
+ const rm=new Map((remote.projects||[]).map(p=>[p.id,p]));
+ const known=base?.books||{};const out=[],conflicts=[];let newActive=local.activeProjectId;
+ for(const [id,r] of rm){
+  const l=lm.get(id),old=known[id],rh=v93BookFingerprint(r);
+  if(!l){
+   // Local deletion since last sync: respect it unless another device modified the book.
+   if(old && old===rh)continue;
+   if(old && old!==rh){out.push(v93ConflictBook(r,'其他设备修改保留'));conflicts.push(id)}
+   else out.push(r);
+   continue;
+  }
+  lm.delete(id);
+  const lh=v93BookFingerprint(l);
+  if(lh===rh){out.push(l);continue}
+  if(old&&lh===old){out.push(r);continue}
+  if(old&&rh===old){out.push(l);continue}
+  // Either both sides changed, or this device has no recorded baseline.
+  out.push(r);
+  const preserved=v93ConflictBook(l,'本机稿件保留');out.push(preserved);conflicts.push(id);
+  if(local.activeProjectId===id)newActive=preserved.id;
+ }
+ for(const [id,l] of lm){
+  const old=known[id];
+  if(old && v93BookFingerprint(l)===old)continue; // Remote deleted an unchanged local copy
+  if(old){out.push(v93ConflictBook(l,'云端已删除时的本机修改'));conflicts.push(id)}
+  else out.push(l);
+ }
+ const trash=[...(remote.trash||[])];const seen=new Set(trash.map(x=>x.id));
+ for(const t of (local.trash||[])){if(!seen.has(t.id)){trash.push(t);seen.add(t.id)}}
+ const merged={...local,projects:out,trash,activeProjectId:newActive};
+ if(!out.some(p=>p.id===merged.activeProjectId))merged.activeProjectId=out[0]?.id||null;
+ return {data:merged,conflicts};
+}
+function v93ScheduleCloudSync(ms=1500){
+ if(!v93Prefs.autoSync||!v9CloudToken()||!mojianAuthState.connected)return;
+ if(v93AutoQueue)clearTimeout(v93AutoQueue);
+ v93AutoQueue=setTimeout(()=>{v93AutoQueue=null;v93SyncRun(false)},ms);
+}
+async function v93SyncRun(manual=false){
+ if(!v9CloudToken()||!mojianAuthState.connected){if(manual)toast('请先登录私人书库');return false}
+ if(v93SyncBusy){v93AutoSyncRepeat=true;return false}
+ v93SyncBusy=true;v93SyncMessage='正在自动同步…';let ok=false;
+ try{
+  // A snapshot protects unsynced drafts before any cloud download/merge.
+  await save();
+  for(let attempt=0;attempt<4;attempt++){
+   const source=JSON.parse(JSON.stringify(state));
+   const sourceSig=v93SyncSignature(source),prior=v93CloudBaseRead();
+   const cloud=await v9CloudRequest('GET');const rev=Number(cloud.revision)||0;
+   if(!cloud.data && rev>0)throw Error('云端返回了修订号但没有正文，已阻止覆盖');
+   const remote=cloud.data||{projects:[],trash:[]};
+   if(!Array.isArray(remote.projects)||!Array.isArray(remote.trash))throw Error('云端小说数据格式异常，已保留本机稿件');
+   if(v93SyncSignature(state)!==sourceSig){continue} // User typed during request; recapture.
+   let result,legacyClean=!prior && v93GetLastHash()===sourceSig && !!v9Cloud.revision;
+   if((source.projects||[]).length===0 && (source.trash||[]).length===0 && !prior){
+      result={data:{...source,projects:remote.projects,trash:remote.trash},conflicts:[]};
+   }else if(legacyClean && rev>0){
+      result={data:{...source,projects:remote.projects,trash:remote.trash},conflicts:[]};
+   }else{
+      result=v93MergeBooks(source,remote,prior);
+   }
+   let next=result.data;
+   const cloudSig=v93SyncSignature(remote),nextSig=v93SyncSignature(next);
+   let updatedRev=rev;
+   if(nextSig!==cloudSig){
+     if(v93SyncSignature(state)!==sourceSig)continue;
+     try{
+      const up=await v9CloudRequest('PUT',{revision:rev,data:next});
+      updatedRev=Number(up.revision)||rev+1;
+     }catch(e){
+       if(attempt<3 && /409|conflict|修订|版本|冲突/i.test(e.message)){continue}
+       throw e;
+     }
+   }
+   // The write may have taken time; preserve edits made while the request was in flight.
+   const liveSig=v93SyncSignature(state);
+   if(liveSig!==sourceSig){
+      const rebased=v93MergeBooks(state,next,v93CloudBaseMake(source,rev));
+      next=rebased.data;
+   }
+   const changed=v93SyncSignature(state)!==v93SyncSignature(next);
+   if(changed && (state.projects||[]).length && (remote.projects||[]).length){
+     try{v9SaveSnapshot(false)}catch(e){console.warn('本机恢复点暂不可用',e)}
+   }
+   // Establish the baseline of what actually reached the server, not a later unsynced local edit.
+   const savedCloud=nextSig===cloudSig?remote:result.data;
+   state=next;consistent();
+   v93CloudBaseWrite(savedCloud,updatedRev);
+   await save();
+   if(changed)render();
+   if(result.conflicts.length){v93SyncMessage='已自动保留不同版本：'+result.conflicts.length+' 处';toast('检测到不同设备都修改了同一本小说，两个版本已分别保留')}
+   else v93SyncMessage='已自动同步 · 云端版本 '+updatedRev;
+   if(v93SyncSignature(state)!==v93SyncSignature(savedCloud))v93AutoSyncRepeat=true;
+   ok=true;break;
+  }
+  if(!ok)v93SyncMessage='写作期间发生更新，正在重新尝试同步';
+ }catch(e){
+  v93SyncMessage='自动同步未完成，本机稿件仍保留：'+e.message;
+  console.warn(v93SyncMessage);
+  if(manual)toast(v93SyncMessage);
+ }finally{
+  v93SyncBusy=false;
+  if(state?.view==='syncStudio')v93ShowSync();
+  if(v93AutoSyncRepeat){v93AutoSyncRepeat=false;v93ScheduleCloudSync(300)}
+ }
+ return ok;
+}
+
 async function v93ConflictResolve(direction){if(!v93SyncConflict)return;if(direction==='cloud'){if(!confirm('将用云端版本替换本地作品。操作前会建立本机恢复点，请确认。'))return;v9SaveSnapshot(true);const remote=await v9CloudRequest('GET');const old=state;try{state=remote.data;consistent();state.settings={...defaults().settings,...state.settings};v9Cloud.revision=remote.revision;v9CloudStore();v93SetHash();v93SyncConflict=null;state.view='library';await save();render();toast('已采用云端版本')}catch(e){state=old;toast(e.message)}}else if(direction==='local'){if(!confirm('即将把本机版本作为最终版本覆盖云端。确认你已备份两台设备的数据！'))return;v9SaveSnapshot(true);const remote=await v9CloudRequest('GET');const up=await v9CloudRequest('PUT',{revision:remote.revision,data:state});v9Cloud.revision=up.revision;v9CloudStore();v93SetHash();v93SyncConflict=null;toast('已采用本机版本上传');v93ShowSync()}}
-function v93ShowSync(){const p=proj();if(!p)return setView('library');v93Page('跨设备云同步','支持检查云端修订号、自动推送与冲突保护。需要部署升级后的 mojian-sync 云函数；网址已预设，无须手动填写。',`<button class="btn" data-mojian-auth="status">账号与连接状态</button>`,`<div class="cards three"><div class="card"><div class="smalllabel">同步地址</div><strong>${v93esc(v9Cloud.url||'未配置')}</strong></div><div class="card"><div class="smalllabel">云端修订号</div><div class="number">${v9Cloud.revision||0}</div></div><div class="card"><div class="smalllabel">当前状态</div><p>${v93esc(v93SyncMessage)}</p></div></div>${v93Card('自动同步策略','页面打开期间每隔指定分钟检查一次；离线或关闭浏览器时不能后台同步。服务器不会被墨间自动创建或部署。',`<label class="prefcheck"><input type="checkbox" id="v93AutoSync" ${v93Prefs.autoSync?'checked':''}>启用自动同步（需要已连接的服务端）</label><div class="field"><label>检查间隔</label><select class="select" id="v93SyncMins">${v93Label(String(v93Prefs.syncMins),[['1','1 分钟'],['3','3 分钟'],['5','5 分钟'],['10','10 分钟']])}</select></div><div class="v93-row"><button class="btn primary" data-v93="sync-save">保存同步设置</button><button class="btn" data-v93="sync-now">立即检查并同步</button></div>`)}${v93SyncConflict?v93Card('需要处理的版本冲突',`云端修订号 ${v93SyncConflict.revision}；本机与云端都有修改。为避免丢稿，已暂停自动覆盖。先导出本机备份，再选择版本。`,`<div class="v93-row"><button class="btn" data-action="export-all">下载本机完整 JSON</button><button class="btn" data-v93="sync-use-cloud">采用云端（替换本机）</button><button class="btn danger" data-v93="sync-use-local">采用本机（覆盖云端）</button></div>`):''}<p class="v93-tip">同一时间在两台设备编辑相同作品仍可能发生冲突。首次连接新设备请先下载云端版本；字体文件需要在每台设备各自导入。</p>`)}
-setInterval(()=>{if(v93Prefs.autoSync&&document.visibilityState==='visible'&&!v93SyncBusy&&Date.now()-(v93SyncLast||0)>Math.max(1,+v93Prefs.syncMins||3)*60000){v93SyncLast=Date.now();v93SyncRun(false)}},20000);
+function v93ShowSync(){const p=proj();if(!p)return setView('library');v93Page('跨设备云同步','登录后自动读取云端书库；写作保存后自动上传；其他设备的修改也会自动拉取。无需手动操作。',`<button class="btn" data-mojian-auth="status">账号与连接状态</button>`,`<div class="cards three"><div class="card"><div class="smalllabel">同步地址</div><strong>${v93esc(v9Cloud.url||'未配置')}</strong></div><div class="card"><div class="smalllabel">云端修订号</div><div class="number">${v9Cloud.revision||0}</div></div><div class="card"><div class="smalllabel">当前状态</div><p>${v93esc(v93SyncMessage)}</p></div></div>${v93Card('自动同步策略','自动同步默认开启。写作修改后自动上传，打开页面及切回页面时自动检查。离线时先保存在本机，联网后再同步。',`<label class="prefcheck"><input type="checkbox" id="v93AutoSync" ${v93Prefs.autoSync?'checked':''}>启用自动同步（需要已连接的服务端）</label><div class="field"><label>检查间隔</label><select class="select" id="v93SyncMins">${v93Label(String(v93Prefs.syncMins),[['1','1 分钟'],['3','3 分钟'],['5','5 分钟'],['10','10 分钟']])}</select></div><div class="v93-row"><button class="btn primary" data-v93="sync-save">保存同步设置</button><button class="btn" data-v93="sync-now">立即检查并同步</button></div>`)}${v93SyncConflict?v93Card('需要处理的版本冲突',`云端修订号 ${v93SyncConflict.revision}；本机与云端都有修改。为避免丢稿，已暂停自动覆盖。先导出本机备份，再选择版本。`,`<div class="v93-row"><button class="btn" data-action="export-all">下载本机完整 JSON</button><button class="btn" data-v93="sync-use-cloud">采用云端（替换本机）</button><button class="btn danger" data-v93="sync-use-local">采用本机（覆盖云端）</button></div>`):''}<p class="v93-tip">同一时间在两台设备编辑相同作品仍可能发生冲突。首次登录会自动安全下载云端版本；同时改动时自动保留两个稿件版本。字体文件仍需在每台设备各自导入。</p>`)}
+setInterval(()=>{if(v93Prefs.autoSync&&document.visibilityState==='visible'&&mojianAuthState.connected&&Date.now()-v93AutoLastPoll>15000){v93AutoLastPoll=Date.now();v93SyncRun(false)}},5000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')v93ScheduleCloudSync(150);else v93ScheduleCloudSync(0)});
+window.addEventListener('online',()=>v93ScheduleCloudSync(150));
+window.addEventListener('focus',()=>{if(Date.now()-v93AutoLastPoll>4000){v93AutoLastPoll=Date.now();v93ScheduleCloudSync(150)}});
 let v93SyncLast=Date.now();
 function v93PostRender(){v93ApplyPrefs();v93ShowFontCard();v93AddEditorTools();if(v93Timer.running){let top=$('#v93TimerChip');if(!top){const bar=$('.topbtns');if(bar){bar.insertAdjacentHTML('afterbegin','<button class="btn small" data-nav="focusTimer" id="v93TimerChip">专注计时</button>');}}v93Tick()}}
 document.addEventListener('change',e=>{if(e.target.id==='v93FontSelect'){v93Prefs.customFont=e.target.value;v93SavePrefs();toast('字体已切换')}if(e.target.id==='v93StateChapter'){v93StateChapter=e.target.value;v93ShowStates()}if(e.target.id==='v93StateChar'){v93StateChar=e.target.value;v93ShowStates()}});
@@ -1613,24 +1743,21 @@ function mojianAuthLogout(show=true){
 }
 async function mojianAfterLogin(){
  try{
-  const remote=await v9CloudRequest('META');
+  await mojianInitReady;
   mojianAuthState.connected=true;
-  const rev=Number(remote.revision)||0;
-  if(rev>0&&(!state.projects||state.projects.length===0)){
-    if(confirm('已连接云端！发现云端有稿件，而当前设备是空书库。\n是否现在下载云端小说？（不会上传空书库）'))await v9InspectCloud();
-    else toast('已登录。你可以稍后点击“从云端恢复”下载小说。');
-  } else if(rev===0&&state.projects?.length){toast('已登录，云端还没有稿件。请先下载本机完整备份，再手动上传本机作品。')}
-  else if(rev>0){toast('已连接私人云端 · 修订号 '+rev+'。请按需检查同步状态。')}
-  else toast('已连接私人云端，当前云端为空。');
+  v93Prefs.autoSync=true;v93SavePrefs();
+  const done=await v93SyncRun(true);
+  if(done)toast('已登录 · 书库已自动同步');
+  else toast('已登录 · 小说已保留在本机，云同步将自动重试');
   render();
  }catch(e){
-  mojianAuthState.connected=false;
-  mojianAuthNote('已登录，但读取数据失败：'+e.message,true);
-  document.getElementById('mojianAuthWall').hidden=false;
-  document.body.classList.add('mojan-locked');
-  mojianAuthShow('login');mojianAuthNote('已登录但读取失败：'+e.message+'。请检查云函数日志，暂不要上传小说。',true);
+  mojianAuthState.connected=true;
+  v93SyncMessage='登录后同步异常，本机作品已保留：'+e.message;
+  console.error('墨间自动同步初始化失败',e);
+  render();
  }
 }
+
 async function mojianAuthBoot(){
  const root=document.getElementById('mojianAuthWall');if(!root)return;
  root.hidden=false;document.body.classList.add('mojan-locked');
@@ -1659,7 +1786,7 @@ document.addEventListener('click',e=>{
 });
 setTimeout(mojianAuthBoot,100);
 
-init();
+const mojianInitReady=init();
 })();
 </script>
 <nav class="mo-mobile-dock" id="moMobileDock" aria-label="手机快速导航">
