@@ -786,10 +786,78 @@ function consistent(){if(!Array.isArray(state.projects))state.projects=[];if(!Ar
 function database(){return new Promise((resolve,reject)=>{try{const req=indexedDB.open('mojian_writer',1);req.onupgradeneeded=()=>req.result.createObjectStore('storage');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)}catch(e){reject(e)}})}
 function dbget(k){return new Promise((resolve,reject)=>{const req=db.transaction('storage','readonly').objectStore('storage').get(k);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 function dbput(k,v){return new Promise((resolve,reject)=>{const tr=db.transaction('storage','readwrite');tr.objectStore('storage').put(v,k);tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error);tr.onabort=()=>reject(tr.error)})}
-async function init(){try{db=await database()}catch(e){db=null}let raw=null,legacy=null;try{raw=db?await dbget('state_v2'):localStorage.getItem('mojian_writer_v2');if(!raw)legacy=db?await dbget('state'):localStorage.getItem('mojian_writer_v1')}catch(e){}try{if(raw){state=JSON.parse(raw)}else if(legacy){const old=JSON.parse(legacy);state=defaults();state.projects=old.projects||[];state.activeProjectId=old.activeProjectId;state.activeWorldId=old.activeWorldId;state.activeChapterId=old.activeChapterId;state.settings={...state.settings,...(old.settings||{})};state.view='library';}else state=defaults();if(!state||!Array.isArray(state.projects))throw Error('bad');state.settings={...defaults().settings,...state.settings}}catch(e){state=defaults()}consistent();if(!state.workspaceV77Initialized){state.workspaceV77Initialized=true;state.view='library';}applySettings();render();setStatus(raw?'已自动保存':legacy?'已载入旧版作品':'本机自动保存',true);if(!raw)save();}
+// 正文双重保险：每次输入先写独立浏览器草稿，再走整书 IndexedDB + 云同步。
+// 不包含密码、密钥；保留最近写作章节，避免一次云端错误抹掉全部手稿。
+const MOJIAN_DRAFT_GUARD_KEY='mojian_body_guard_20261020_v1';
+let mojianGuardRecoveryCount=0;
+function mojianReadGuards(){
+ try{const value=JSON.parse(localStorage.getItem(MOJIAN_DRAFT_GUARD_KEY)||'[]');return Array.isArray(value)?value:[]}
+ catch(e){return []}
+}
+function mojianGuardDraft(book,chapter){
+ if(!book||!chapter||typeof chapter.content!=='string')return false;
+ try{
+  const entry={bookId:book.id,chapterId:chapter.id,title:chapter.title||'',bookTitle:book.title||'',content:chapter.content,at:Date.now()};
+  let history=mojianReadGuards().filter(x=>!(x.bookId===entry.bookId&&x.chapterId===entry.chapterId));
+  history.unshift(entry);history=history.slice(0,14);
+  // 限制备份区大小，避免 localStorage 配额被无穷堆积的旧稿占满。
+  let chars=0;history=history.filter(x=>{chars+=(x.content||'').length;return chars<1600000||x===entry});
+  localStorage.setItem(MOJIAN_DRAFT_GUARD_KEY,JSON.stringify(history));
+  return true;
+ }catch(e){console.warn('正文草稿保护区写入失败，仍将尝试正常本机保存',e);return false}
+}
+function mojianFlushVisibleEditorDraft(){
+ if(!state||state.view!=='editor')return false;
+ const input=document.getElementById('edBody');const book=proj(),chapter=chap();
+ if(!input||!book||!chapter)return false;
+ if(input.value===chapter.content)return false;
+ chapter.content=input.value;chapter.updatedAt=Date.now();book.updatedAt=chapter.updatedAt;
+ mojianGuardDraft(book,chapter);
+ return true;
+}
+function mojianRecoverDraftOnInit(){
+ if(!state||!Array.isArray(state.projects))return 0;
+ let recovered=0;
+ for(const draft of mojianReadGuards()){
+  if(!draft||typeof draft.content!=='string')continue;
+  const book=state.projects.find(x=>x.id===draft.bookId),chapter=book?.chapters?.find(x=>x.id===draft.chapterId);
+  if(!chapter||chapter.content===draft.content)continue;
+  // 防止旧保护草稿回滚较新的正文；有歧义时不主动覆盖。
+  if(draft.content.length>0 && (chapter.content.length===0||Number(draft.at)>=Number(chapter.updatedAt||0))){
+   // 将旧正文也放进历史版本，避免恢复草稿反而覆盖现有稿件。
+   if(chapter.content){chapter.versions=Array.isArray(chapter.versions)?chapter.versions:[];
+    chapter.versions.push({title:chapter.title||'',content:chapter.content,date:Date.now(),note:'自动保护 · 恢复草稿前'});
+    if(chapter.versions.length>20)chapter.versions=chapter.versions.slice(-20);
+   }
+   chapter.content=draft.content;chapter.updatedAt=Math.max(Date.now(),Number(draft.at)||0);
+   book.updatedAt=chapter.updatedAt;recovered++;
+  }
+ }
+ return recovered;
+}
+async function init(){try{db=await database()}catch(e){db=null}let raw=null,legacy=null;try{raw=db?await dbget('state_v2'):localStorage.getItem('mojian_writer_v2');
+ const alternate=localStorage.getItem('mojian_writer_v2');
+ if(alternate){try{const a=JSON.parse(alternate),b=raw?JSON.parse(raw):null;
+  if(!b||Number(a.lastSaved||0)>Number(b.lastSaved||0))raw=alternate;
+ }catch(e){console.warn('备用稿读取失败',e)}}
+ if(!raw)legacy=db?await dbget('state'):localStorage.getItem('mojian_writer_v1')}catch(e){}try{if(raw){state=JSON.parse(raw)}else if(legacy){const old=JSON.parse(legacy);state=defaults();state.projects=old.projects||[];state.activeProjectId=old.activeProjectId;state.activeWorldId=old.activeWorldId;state.activeChapterId=old.activeChapterId;state.settings={...state.settings,...(old.settings||{})};state.view='library';}else state=defaults();if(!state||!Array.isArray(state.projects))throw Error('bad');state.settings={...defaults().settings,...state.settings}}catch(e){state=defaults()}consistent();mojianGuardRecoveryCount=mojianRecoverDraftOnInit();if(!state.workspaceV77Initialized){state.workspaceV77Initialized=true;state.view='library';}applySettings();render();setStatus(mojianGuardRecoveryCount?'已从本机保护区恢复 '+mojianGuardRecoveryCount+' 份正文草稿':raw?'已载入本机稿件':legacy?'已载入旧版作品':'本机自动保存',true);if(!raw||mojianGuardRecoveryCount)save().catch(console.warn);}
 function setStatus(message,good=false){const f=$('#focusSave');if(f)f.textContent=message;const n=$('#saveStatus');if(n){n.className='status'+(good?' good':'');n.innerHTML=`${ico(good?'check':'clock','sm')} ${escapeHTML(message)}`}}
-function mark(){setStatus('正在保存…');clearTimeout(saveTimer);saveTimer=setTimeout(save,Math.max(200,Math.min(5000,+state.settings.autosave||400)));if(typeof v93ScheduleCloudSync==='function')v93ScheduleCloudSync(1500)}
-function save(){clearTimeout(saveTimer);state.lastSaved=Date.now();let s=JSON.stringify(state);savePromise=savePromise.catch(()=>{}).then(async()=>{try{if(db)await dbput('state_v2',s);else localStorage.setItem('mojian_writer_v2',s);setStatus('已自动保存',true)}catch(e){setStatus('保存失败 · 请导出备份');toast('保存失败，请立即导出完整备份')}});return savePromise}
+function mark(){setStatus('正在保存本机草稿…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>{save().catch(err=>console.warn('墨间本机保存失败',err))},Math.max(200,Math.min(5000,+state.settings.autosave||400)));if(typeof v93ScheduleCloudSync==='function')v93ScheduleCloudSync(1500)}
+function save(){
+ clearTimeout(saveTimer);
+ mojianFlushVisibleEditorDraft(); // 防止云同步更换数据对象后，输入框仍指向旧的章节对象
+ state.lastSaved=Date.now();
+ const serialized=JSON.stringify(state);
+ savePromise=savePromise.catch(()=>{}).then(async()=>{
+  try{
+   if(db){try{await dbput('state_v2',serialized)}catch(dbError){localStorage.setItem('mojian_writer_v2',serialized);console.warn('IndexedDB 故障，已切换浏览器本地备用存储',dbError)}}
+   else localStorage.setItem('mojian_writer_v2',serialized);
+   setStatus('正文已保存到本机',true);
+  }catch(e){setStatus('本机保存失败！请备份草稿');toast('本机存储异常，草稿保护区可能仍有副本');throw e}
+ });
+ return savePromise;
+}
+
 function update(msg){proj()&&(proj().updatedAt=Date.now());mark();render();if(msg)toast(msg)}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2500)}
 function applySettings(){document.body.classList.toggle('dark',state.settings.theme==='dark');const currentBook=state.view==='library'?null:proj(),local=currentBook?.workspace||{};const effectiveFont=local.font&&local.font!=='follow'?local.font:state.settings.font;document.documentElement.style.setProperty('--fontsize',(Number(local.fontSize)||state.settings.fontSize)+'px');document.documentElement.style.setProperty('--lineheight',state.settings.lineHeight);document.documentElement.style.setProperty('--editorfont',effectiveFont==='sans'?"'PingFang SC','Microsoft Yahei',sans-serif":effectiveFont==='mono'?"'Consolas','SFMono-Regular',monospace":"'Songti SC','STSong','Noto Serif CJK SC',serif");document.body.dataset.bookSkin=currentBook?.theme||'blue';document.body.classList.toggle('in-book',!!currentBook);document.body.classList.remove('book-paper-warm','book-paper-grey');if(local.paper==='warm'||local.paper==='grey')document.body.classList.add('book-paper-'+local.paper);const s=state.settings;document.body.classList.remove('paper-warm','paper-grey');if(s.paper==='warm'||s.paper==='grey')document.body.classList.add('paper-'+s.paper);document.body.classList.toggle('typing-mode',!!s.typingMode);const px=(k,v)=>document.documentElement.style.setProperty(k,v+'px');px('--sheetwidth',s.sheetWidth||1120);px('--treewidth',s.treeWidth||198);px('--editorheight',s.editorHeight||850);px('--editpad',s.editorPadding||42);document.documentElement.style.setProperty('--indent',s.autoIndent?'0em':(s.indent||0)+'em');document.body.classList.toggle('writer-wide',writerMode==='wide'||writerMode==='default'&&!!s.wideDefault);document.body.classList.toggle('writer-max',writerMode==='max');}
@@ -862,7 +930,7 @@ function showEditor(){const p=proj();if(!p)return setView('library');if(!p.chapt
  </div><div class="ed-aside">${assistantAside()}</div></div>`;
  document.body.classList.toggle('reader-mode',editorReading);document.body.classList.toggle('reference-mode',editorReference);
  if(editorReading)refreshReader();
- $('#edBody').addEventListener('input',e=>{const newCount=words(e.target.value),oldCount=words(c.content),delta=Math.max(0,newCount-oldCount);c.content=e.target.value;c.updatedAt=Date.now();p.updatedAt=c.updatedAt;recordWords(p,delta);$('#edCount').textContent=fmt(newCount)+' 字';$('#bottomCount').textContent='本章 '+fmt(newCount)+' 字';if($('#focusCount'))$('#focusCount').textContent=fmt(newCount)+' 字';$('#chapterProgress')&&($('#chapterProgress').textContent='完成 '+Math.min(100,Math.round(newCount/Math.max(1,state.settings.chapterGoal)*100))+'%');/* 输入不触发缩放、不改变编辑器尺寸，也不强制重定位滚动条 */mark()});
+ $('#edBody').addEventListener('input',e=>{const newCount=words(e.target.value),oldCount=words(c.content),delta=Math.max(0,newCount-oldCount);c.content=e.target.value;c.updatedAt=Date.now();p.updatedAt=c.updatedAt;mojianGuardDraft(p,c);recordWords(p,delta);$('#edCount').textContent=fmt(newCount)+' 字';$('#bottomCount').textContent='本章 '+fmt(newCount)+' 字';if($('#focusCount'))$('#focusCount').textContent=fmt(newCount)+' 字';$('#chapterProgress')&&($('#chapterProgress').textContent='完成 '+Math.min(100,Math.round(newCount/Math.max(1,state.settings.chapterGoal)*100))+'%');/* 输入不触发缩放、不改变编辑器尺寸，也不强制重定位滚动条 */mark()});
  $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();restoreChapterMenuScroll('book:'+p.id);
 }
 function refreshReader(){const c=chap(),host=$('#readPreview');if(!host||!c)return;const paras=c.content.replace(/\r\n?/g,'\n').split('\n').map(x=>`<p style="${/^[\u3000 \t]+/.test(x)?'text-indent:0':''}">${escapeHTML(x)||'&nbsp;'}</p>`).join('');host.innerHTML=`<h2>${escapeHTML(c.title||'未命名章节')}</h2>${paras||'<p class="reader-empty">这章还没有正文。点击“阅读”即可切回写作。</p>'}`;host.scrollTop=0}
@@ -1272,7 +1340,7 @@ $('#aiFileInput').addEventListener('change',async e=>{const f=e.target.files?.[0
 $('#modal').addEventListener('mousedown',e=>{if(e.target===$('#modal'))closeModal()});$('#importFile').addEventListener('change',e=>importFile(e.target.files?.[0]));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(editorFocus)exitEditorFocus();closeModal()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();toast('已保存')}if((e.ctrlKey||e.metaKey)&&e.key==='\\'){e.preventDefault();action('focus')}});
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&editorFocus){editorFocus=false;document.body.classList.remove('focus')}});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save()});window.addEventListener('pagehide',()=>save());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){mojianFlushVisibleEditorDraft();save().catch(console.warn)}});window.addEventListener('pagehide',()=>{mojianFlushVisibleEditorDraft();save().catch(console.warn)});
 window.setInterval(()=>{if(state?.view==='editor'&&chap()?.content){let c=chap(),last=c.versions.at(-1);if(!last||Date.now()-last.date>15*60*1000){if(!last||last.content!==c.content)snapshot(false)}}},15*60*1000);
 
 /* V7 focused reader event delegation */
@@ -1652,18 +1720,33 @@ async function v93SyncRun(manual=false){
       const rebased=v93MergeBooks(state,next,v93CloudBaseMake(source,rev));
       next=rebased.data;
    }
+   // 正文输入框的事件监听器引用当前章对象。内容相同时绝不重建 state，
+   // 否则输入框仍更新旧对象，表面字数在涨，但实际书库没有保存新文字。
+   mojianFlushVisibleEditorDraft();
    const changed=v93SyncSignature(state)!==v93SyncSignature(next);
    if(changed && (state.projects||[]).length && (remote.projects||[]).length){
      try{v9SaveSnapshot(false)}catch(e){console.warn('本机恢复点暂不可用',e)}
    }
-   // Establish the baseline of what actually reached the server, not a later unsynced local edit.
    const savedCloud=nextSig===cloudSig?remote:result.data;
-   state=next;consistent();
+   if(changed){
+     const ed=document.getElementById('edBody');
+     const focused=!!ed && state.view==='editor' && document.activeElement===ed;
+     const selection=focused?{start:ed.selectionStart,end:ed.selectionEnd,direction:ed.selectionDirection}:null;
+     // 同步中有新的键入时，绝不让网络响应覆盖编辑框里的新字。
+     if(v93SyncSignature(state)!==liveSig){
+       const newer=v93MergeBooks(state,next,v93CloudBaseMake(source,rev));
+       next=newer.data;v93AutoSyncRepeat=true;
+     }
+     state=next;consistent();
+     // 重画可重新绑定最新章节对象，而不是继续向旧对象写稿。
+     render();
+     if(selection){const live=document.getElementById('edBody');if(live){live.focus({preventScroll:true});try{live.setSelectionRange(selection.start,selection.end,selection.direction)}catch(e){}}}
+   }
+   // 仅更新云端元信息，不动未变化的本机 state 与活动编辑器。
    v93CloudBaseWrite(savedCloud,updatedRev);
    await save();
-   if(changed)render();
    if(result.conflicts.length){v93SyncMessage='已自动保留不同版本：'+result.conflicts.length+' 处';toast('检测到不同设备都修改了同一本小说，两个版本已分别保留')}
-   else v93SyncMessage='已自动同步 · 云端版本 '+updatedRev;
+   else v93SyncMessage=v93SyncSignature(state)===v93SyncSignature(savedCloud)?'正文与云端一致 · 版本 '+updatedRev:'本机草稿已保存 · 云端正在继续同步';
    if(v93SyncSignature(state)!==v93SyncSignature(savedCloud))v93AutoSyncRepeat=true;
    ok=true;break;
   }
@@ -1681,7 +1764,7 @@ async function v93SyncRun(manual=false){
 }
 
 async function v93ConflictResolve(direction){if(!v93SyncConflict)return;if(direction==='cloud'){if(!confirm('将用云端版本替换本地作品。操作前会建立本机恢复点，请确认。'))return;v9SaveSnapshot(true);const remote=await v9CloudRequest('GET');const old=state;try{state=remote.data;consistent();state.settings={...defaults().settings,...state.settings};v9Cloud.revision=remote.revision;v9CloudStore();v93SetHash();v93SyncConflict=null;state.view='library';await save();render();toast('已采用云端版本')}catch(e){state=old;toast(e.message)}}else if(direction==='local'){if(!confirm('即将把本机版本作为最终版本覆盖云端。确认你已备份两台设备的数据！'))return;v9SaveSnapshot(true);const remote=await v9CloudRequest('GET');const up=await v9CloudRequest('PUT',{revision:remote.revision,data:state});v9Cloud.revision=up.revision;v9CloudStore();v93SetHash();v93SyncConflict=null;toast('已采用本机版本上传');v93ShowSync()}}
-function v93ShowSync(){const p=proj();if(!p)return setView('library');v93Page('跨设备云同步','登录后自动读取云端书库；写作保存后自动上传；其他设备的修改也会自动拉取。无需手动操作。',`<button class="btn" data-mojian-auth="status">账号与连接状态</button>`,`<div class="cards three"><div class="card"><div class="smalllabel">同步地址</div><strong>${v93esc(v9Cloud.url||'未配置')}</strong></div><div class="card"><div class="smalllabel">云端修订号</div><div class="number">${v9Cloud.revision||0}</div></div><div class="card"><div class="smalllabel">当前状态</div><p>${v93esc(v93SyncMessage)}</p></div></div>${v93Card('自动同步策略','自动同步默认开启。写作修改后自动上传，打开页面及切回页面时自动检查。离线时先保存在本机，联网后再同步。',`<label class="prefcheck"><input type="checkbox" id="v93AutoSync" ${v93Prefs.autoSync?'checked':''}>启用自动同步（需要已连接的服务端）</label><div class="field"><label>检查间隔</label><select class="select" id="v93SyncMins">${v93Label(String(v93Prefs.syncMins),[['1','1 分钟'],['3','3 分钟'],['5','5 分钟'],['10','10 分钟']])}</select></div><div class="v93-row"><button class="btn primary" data-v93="sync-save">保存同步设置</button><button class="btn" data-v93="sync-now">立即检查并同步</button></div>`)}${v93SyncConflict?v93Card('需要处理的版本冲突',`云端修订号 ${v93SyncConflict.revision}；本机与云端都有修改。为避免丢稿，已暂停自动覆盖。先导出本机备份，再选择版本。`,`<div class="v93-row"><button class="btn" data-action="export-all">下载本机完整 JSON</button><button class="btn" data-v93="sync-use-cloud">采用云端（替换本机）</button><button class="btn danger" data-v93="sync-use-local">采用本机（覆盖云端）</button></div>`):''}<p class="v93-tip">同一时间在两台设备编辑相同作品仍可能发生冲突。首次登录会自动安全下载云端版本；同时改动时自动保留两个稿件版本。字体文件仍需在每台设备各自导入。</p>`)}
+function v93ShowSync(){const p=proj();if(!p)return setView('library');v93Page('跨设备云同步','正文每次输入都先存独立草稿保护区和本机数据库，再自动上传云端；同步失败会显示原因，联网后重试。',`<button class="btn" data-mojian-auth="status">账号与连接状态</button>`,`<div class="cards three"><div class="card"><div class="smalllabel">同步地址</div><strong>${v93esc(v9Cloud.url||'未配置')}</strong></div><div class="card"><div class="smalllabel">云端修订号</div><div class="number">${v9Cloud.revision||0}</div></div><div class="card"><div class="smalllabel">当前状态</div><p>${v93esc(v93SyncMessage)}</p></div></div>${v93Card('自动同步策略','自动同步默认开启。写作修改后自动上传，打开页面及切回页面时自动检查。离线时先保存在本机，联网后再同步。',`<label class="prefcheck"><input type="checkbox" id="v93AutoSync" ${v93Prefs.autoSync?'checked':''}>启用自动同步（需要已连接的服务端）</label><div class="field"><label>检查间隔</label><select class="select" id="v93SyncMins">${v93Label(String(v93Prefs.syncMins),[['1','1 分钟'],['3','3 分钟'],['5','5 分钟'],['10','10 分钟']])}</select></div><div class="v93-row"><button class="btn primary" data-v93="sync-save">保存同步设置</button><button class="btn" data-v93="sync-now">立即检查并同步</button></div>`)}${v93SyncConflict?v93Card('需要处理的版本冲突',`云端修订号 ${v93SyncConflict.revision}；本机与云端都有修改。为避免丢稿，已暂停自动覆盖。先导出本机备份，再选择版本。`,`<div class="v93-row"><button class="btn" data-action="export-all">下载本机完整 JSON</button><button class="btn" data-v93="sync-use-cloud">采用云端（替换本机）</button><button class="btn danger" data-v93="sync-use-local">采用本机（覆盖云端）</button></div>`):''}<p class="v93-tip">同一时间在两台设备编辑相同作品仍可能发生冲突。首次登录会自动安全下载云端版本；同时改动时自动保留两个稿件版本。字体文件仍需在每台设备各自导入。</p>`)}
 setInterval(()=>{if(v93Prefs.autoSync&&document.visibilityState==='visible'&&mojianAuthState.connected&&Date.now()-v93AutoLastPoll>15000){v93AutoLastPoll=Date.now();v93SyncRun(false)}},5000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')v93ScheduleCloudSync(150);else v93ScheduleCloudSync(0)});
 window.addEventListener('online',()=>v93ScheduleCloudSync(150));
