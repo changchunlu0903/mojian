@@ -678,6 +678,16 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
 .mojan-primary{background:#002fa7;color:white;font-size:14px;font-weight:800;border-radius:8px;min-height:46px;margin-top:3px}.mojan-primary:hover{background:#1646c5}.mojan-msg{min-height:22px;font-size:12px;line-height:1.6;margin:10px 0;color:#56657d}.mojan-foot{display:flex;justify-content:center}.mojan-foot button{font-size:12px;color:#2856b9;text-decoration:underline}.mojan-safe{margin-top:22px;padding-top:17px;border-top:1px solid #eef0f5;color:#8791a3;font-size:11px;line-height:1.75}
 @media(max-width:500px){.mojan-card{padding:26px 22px;border-radius:13px}.mojan-card h1{font-size:22px}#mojianAuthWall{padding:14px}}
 </style>
+<style>
+.mojan-manage-mask{position:fixed;inset:0;z-index:1000001;background:#111b35bb;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:5vh 14px;color:#18233a}
+.mojan-manage-card{width:min(830px,100%);border-radius:18px;padding:28px;background:#fff;box-shadow:0 18px 64px #0005;font:15px/1.6 system-ui,"PingFang SC",sans-serif}
+.mojan-manage-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.mojan-manage-head h2{font-size:22px;margin:0 0 16px}
+.mojan-manage-card h3{font-size:17px;margin:20px 0 10px}.mojan-manage-card label{display:block;margin:14px 0 5px;font-weight:600}.mojan-manage-card .input{min-width:0;box-sizing:border-box}
+.mojan-fieldrow{display:grid;grid-template-columns:1fr 1.3fr auto;gap:10px}.mojan-users{display:grid;gap:8px;max-height:44vh;overflow:auto}
+.mojan-user{display:grid;grid-template-columns:1fr 1.3fr auto auto;align-items:center;gap:9px;padding:10px;border:1px solid #dde4ee;border-radius:10px}
+.mojan-user small{display:block;color:#66748c}.mojan-manage-card .btn{white-space:nowrap}
+@media(max-width:700px){.mojan-manage-card{padding:18px}.mojan-fieldrow,.mojan-user{grid-template-columns:1fr 1fr}.mojan-fieldrow button{grid-column:span 2}.mojan-user .input{grid-column:2}.mojan-user .btn{white-space:normal}}
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
@@ -775,6 +785,8 @@ const freshChapter=(wid,n)=>({id:uid(),worldId:wid,title:`第${n}章`,content:''
 const freshProject=(type='novel')=>{const w=freshWorld(1);return{id:uid(),title:'未命名作品',genre:type==='quick'?'快穿 · 言情':'原创小说',description:'',tags:'',status:'构思中',theme:'blue',createdAt:Date.now(),updatedAt:Date.now(),goal:200000,worlds:[w],chapters:[freshChapter(w.id,1)],characters:[],relations:[],timeline:[],lore:[],notes:[],scenes:[],tasks:[],wordHistory:[],scratchpad:'',plotNodes:[],graphLinks:[],graphPositions:{},aiReports:[],workspace:{lastView:'dashboard',lastChapterId:null,lastWorldId:null,motto:'',deskNote:'',font:'follow',fontSize:0,paper:'follow',preferredApiId:''}}};
 const defaults=()=>({version:2,projects:[],trash:[],activeProjectId:null,activeWorldId:null,activeChapterId:null,view:'library',settings:{theme:'light',fontSize:19,lineHeight:2,font:'serif',chapterGoal:2500,dailyGoal:1000,paper:'white',sheetWidth:1120,editorHeight:850,treeWidth:198,indent:0,autoIndent:true,indentChars:2,paragraphGap:false,smartQuotes:false,tabIndent:false,smartPaste:false,editorParagraphGuide:true,editorPadding:42,spellcheck:false,autosave:400,typingMode:false,wideDefault:true,wordWrap:true,showAside:false,autoBackupReminder:true,accent:'blue',readerFontSize:19,readerLineHeight:2.05,readerWidth:850,readerPaper:'normal',readerFont:'serif',readerSpeechRate:1},lastSaved:Date.now()});
 let storyMode='overview',storySuggestions=[],storyReplyDraft='',storyBusy=false;
+let mojianAccount=null;
+function mojianLocalKey(base){return !mojianAccount||mojianAccount.role==='admin'?base:base+'__'+mojianAccount.uid;}
 let state,db=null,saveTimer=null,savePromise=Promise.resolve(),activeSearch='',editorFocus=false,modalHandler=null,saveMark='',toastTimer=null,libraryFilter='all',sceneFilter='all',writerMode='default',editorReading=false,editorReference=false,mindScope='all',mindZoom=1,mindSelected='root',mindNodeCache=[],aiPreview=null;
 const proj=()=>state.projects.find(p=>p.id===state.activeProjectId)||null;
 const wld=()=>proj()?.worlds.find(w=>w.id===state.activeWorldId)||proj()?.worlds[0]||null;
@@ -788,7 +800,7 @@ function dbget(k){return new Promise((resolve,reject)=>{const req=db.transaction
 function dbput(k,v){return new Promise((resolve,reject)=>{const tr=db.transaction('storage','readwrite');tr.objectStore('storage').put(v,k);tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error);tr.onabort=()=>reject(tr.error)})}
 // 正文双重保险：每次输入先写独立浏览器草稿，再走整书 IndexedDB + 云同步。
 // 不包含密码、密钥；保留最近写作章节，避免一次云端错误抹掉全部手稿。
-const MOJIAN_DRAFT_GUARD_KEY='mojian_body_guard_20261020_v1';
+let MOJIAN_DRAFT_GUARD_KEY='mojian_body_guard_20261020_v1';
 let mojianGuardRecoveryCount=0;
 function mojianReadGuards(){
  try{const value=JSON.parse(localStorage.getItem(MOJIAN_DRAFT_GUARD_KEY)||'[]');return Array.isArray(value)?value:[]}
@@ -835,12 +847,12 @@ function mojianRecoverDraftOnInit(){
  }
  return recovered;
 }
-async function init(){try{db=await database()}catch(e){db=null}let raw=null,legacy=null;try{raw=db?await dbget('state_v2'):localStorage.getItem('mojian_writer_v2');
- const alternate=localStorage.getItem('mojian_writer_v2');
+async function init(){try{db=await database()}catch(e){db=null}let raw=null,legacy=null;try{raw=db?await dbget(mojianLocalKey('state_v2')):localStorage.getItem(mojianLocalKey('mojian_writer_v2'));
+ const alternate=localStorage.getItem(mojianLocalKey('mojian_writer_v2'));
  if(alternate){try{const a=JSON.parse(alternate),b=raw?JSON.parse(raw):null;
   if(!b||Number(a.lastSaved||0)>Number(b.lastSaved||0))raw=alternate;
  }catch(e){console.warn('备用稿读取失败',e)}}
- if(!raw)legacy=db?await dbget('state'):localStorage.getItem('mojian_writer_v1')}catch(e){}try{if(raw){state=JSON.parse(raw)}else if(legacy){const old=JSON.parse(legacy);state=defaults();state.projects=old.projects||[];state.activeProjectId=old.activeProjectId;state.activeWorldId=old.activeWorldId;state.activeChapterId=old.activeChapterId;state.settings={...state.settings,...(old.settings||{})};state.view='library';}else state=defaults();if(!state||!Array.isArray(state.projects))throw Error('bad');state.settings={...defaults().settings,...state.settings}}catch(e){state=defaults()}consistent();mojianGuardRecoveryCount=mojianRecoverDraftOnInit();if(!state.workspaceV77Initialized){state.workspaceV77Initialized=true;state.view='library';}applySettings();render();setStatus(mojianGuardRecoveryCount?'已从本机保护区恢复 '+mojianGuardRecoveryCount+' 份正文草稿':raw?'已载入本机稿件':legacy?'已载入旧版作品':'本机自动保存',true);if(!raw||mojianGuardRecoveryCount)save().catch(console.warn);}
+ if(!raw&&(!mojianAccount||mojianAccount.role==='admin'))legacy=db?await dbget('state'):localStorage.getItem('mojian_writer_v1')}catch(e){}try{if(raw){state=JSON.parse(raw)}else if(legacy){const old=JSON.parse(legacy);state=defaults();state.projects=old.projects||[];state.activeProjectId=old.activeProjectId;state.activeWorldId=old.activeWorldId;state.activeChapterId=old.activeChapterId;state.settings={...state.settings,...(old.settings||{})};state.view='library';}else state=defaults();if(!state||!Array.isArray(state.projects))throw Error('bad');state.settings={...defaults().settings,...state.settings}}catch(e){state=defaults()}consistent();mojianGuardRecoveryCount=mojianRecoverDraftOnInit();if(!state.workspaceV77Initialized){state.workspaceV77Initialized=true;state.view='library';}applySettings();render();setStatus(mojianGuardRecoveryCount?'已从本机保护区恢复 '+mojianGuardRecoveryCount+' 份正文草稿':raw?'已载入本机稿件':legacy?'已载入旧版作品':'本机自动保存',true);if(!raw||mojianGuardRecoveryCount)save().catch(console.warn);}
 function setStatus(message,good=false){const f=$('#focusSave');if(f)f.textContent=message;const n=$('#saveStatus');if(n){n.className='status'+(good?' good':'');n.innerHTML=`${ico(good?'check':'clock','sm')} ${escapeHTML(message)}`}}
 function mark(){setStatus('正在保存本机草稿…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>{save().catch(err=>console.warn('墨间本机保存失败',err))},Math.max(200,Math.min(5000,+state.settings.autosave||400)));if(typeof v93ScheduleCloudSync==='function')v93ScheduleCloudSync(1500)}
 function save(){
@@ -850,8 +862,8 @@ function save(){
  const serialized=JSON.stringify(state);
  savePromise=savePromise.catch(()=>{}).then(async()=>{
   try{
-   if(db){try{await dbput('state_v2',serialized)}catch(dbError){localStorage.setItem('mojian_writer_v2',serialized);console.warn('IndexedDB 故障，已切换浏览器本地备用存储',dbError)}}
-   else localStorage.setItem('mojian_writer_v2',serialized);
+   if(db){try{await dbput(mojianLocalKey('state_v2'),serialized)}catch(dbError){localStorage.setItem(mojianLocalKey('mojian_writer_v2'),serialized);console.warn('IndexedDB 故障，已切换浏览器本地备用存储',dbError)}}
+   else localStorage.setItem(mojianLocalKey('mojian_writer_v2'),serialized);
    setStatus('正文已保存到本机',true);
   }catch(e){setStatus('本机保存失败！请备份草稿');toast('本机存储异常，草稿保护区可能仍有副本');throw e}
  });
@@ -918,7 +930,7 @@ function renderSidebar(){const p=proj(),inside=p&&state.view!=='library'&&!['tra
 function workspacePath(){if(!proj()||['library','search','trash','settings','dashboard','editor','reading'].includes(state.view))return '';const steps=[['outline','规划大纲'],['scenes','安排剧情'],['editor','撰写正文'],['reading','阅读校稿'],['mindmap','故事关系网']];return `<nav class="workspace-path" aria-label="创作步骤">${steps.map(([id,label],i)=>`<button class="path-step ${state.view===id?'active':''}" data-nav="${id}"><span>${String(i+1).padStart(2,'0')}</span>${label}</button>`).join('')}</nav>`}
 function page(k,title,sub,actions=''){return `<div class="titlebar"><div><div class="kicker">${k}</div><h1 class="h1">${title}</h1><div class="sub">${sub}</div></div><div class="btnrow">${actions}</div></div>${workspacePath()}`}
 const empty=(t,s,action,label)=>`<div class="empty">${ico('book','xl')}<strong>${escapeHTML(t)}</strong><div>${escapeHTML(s)}</div>${action?`<button class="btn primary" data-action="${action}" style="margin-top:15px">${ico('plus','sm')}${escapeHTML(label)}</button>`:''}</div>`;
-function showLibrary(){let p=state.projects,finished=p.reduce((n,x)=>n+total(x),0);$('#main').innerHTML=`<div class="wrap">${page('PERSONAL LIBRARY','我的小说书库','从这里进入每本小说独立的创作主页。一本书一个空间，章节、人物、设定和 AI 对话互不混杂。',`<button class="btn" data-mojian-auth="status">私人书库</button><button class="btn" data-v9="cloud-download">从云端恢复</button><button class="btn" data-action="import">${ico('download','sm')}导入备份</button>${p.some(x=>/（本机稿件保留）$/.test(x.title||''))?`<button class="btn danger" data-action="cleanup-preserved">清理误生成的本机副本（${p.filter(x=>/（本机稿件保留）$/.test(x.title||'')).length}）</button>`:''}<button class="btn primary" data-action="create-project">${ico('plus','sm')}新建作品</button>`)}<div class="cards four" style="margin-bottom:28px"><div class="card"><div class="smalllabel">作品总数</div><div class="number">${p.length}</div><div class="muted">你的独立小说项目</div></div><div class="card"><div class="smalllabel">累计创作</div><div class="number">${fmt(finished)}</div><div class="muted">所有作品的正文文字</div></div><div class="card"><div class="smalllabel">总章节</div><div class="number">${p.reduce((n,x)=>n+x.chapters.length,0)}</div><div class="muted">跨作品章节统计</div></div><div class="card"><div class="smalllabel">创作世界</div><div class="number">${p.reduce((n,x)=>n+x.worlds.length,0)}</div><div class="muted">独立卷与世界</div></div></div><div class="sectionhead"><h2>作品列表</h2><div class="filters" style="margin:0"><input class="input" id="libraryFilter" value="${escapeHTML(activeSearch)}" placeholder="搜索作品名称、题材…" style="width:220px"><select class="select" id="libraryStatus" style="width:126px">${option(['全部','构思中','连载中','已完结','暂停'],libraryFilter==='all'?'全部':libraryFilter)}</select></div></div><div class="project-grid" id="libraryGrid">${libraryCards()}</div><div class="alert" style="margin-top:27px">小说本机保存并自动云同步；已永久删除的书不会再从其他设备自动复活。需要清理自动生成的重复副本时，使用上方的清理按钮。重要稿件请另存 JSON 备份。</div></div>`;$('#libraryFilter').addEventListener('input',e=>{activeSearch=e.target.value;$('#libraryGrid').innerHTML=libraryCards()});$('#libraryStatus').addEventListener('change',e=>{libraryFilter=e.target.value==='全部'?'all':e.target.value;$('#libraryGrid').innerHTML=libraryCards()});}
+function showLibrary(){let p=state.projects,finished=p.reduce((n,x)=>n+total(x),0);$('#main').innerHTML=`<div class="wrap">${page('PERSONAL LIBRARY','我的小说书库','从这里进入每本小说独立的创作主页。一本书一个空间，章节、人物、设定和 AI 对话互不混杂。',`<button class="btn" data-mojian-auth="status">账户 / 退出</button><button class="btn" data-mojian-account="password">修改密码</button>${mojianAccount?.role==='admin'?'<button class="btn primary" data-mojian-admin="open">账号管理</button>':''}<button class="btn" data-v9="cloud-download">从云端恢复</button><button class="btn" data-action="import">${ico('download','sm')}导入备份</button>${p.some(x=>/（本机稿件保留）$/.test(x.title||''))?`<button class="btn danger" data-action="cleanup-preserved">清理误生成的本机副本（${p.filter(x=>/（本机稿件保留）$/.test(x.title||'')).length}）</button>`:''}<button class="btn primary" data-action="create-project">${ico('plus','sm')}新建作品</button>`)}<div class="cards four" style="margin-bottom:28px"><div class="card"><div class="smalllabel">作品总数</div><div class="number">${p.length}</div><div class="muted">你的独立小说项目</div></div><div class="card"><div class="smalllabel">累计创作</div><div class="number">${fmt(finished)}</div><div class="muted">所有作品的正文文字</div></div><div class="card"><div class="smalllabel">总章节</div><div class="number">${p.reduce((n,x)=>n+x.chapters.length,0)}</div><div class="muted">跨作品章节统计</div></div><div class="card"><div class="smalllabel">创作世界</div><div class="number">${p.reduce((n,x)=>n+x.worlds.length,0)}</div><div class="muted">独立卷与世界</div></div></div><div class="sectionhead"><h2>作品列表</h2><div class="filters" style="margin:0"><input class="input" id="libraryFilter" value="${escapeHTML(activeSearch)}" placeholder="搜索作品名称、题材…" style="width:220px"><select class="select" id="libraryStatus" style="width:126px">${option(['全部','构思中','连载中','已完结','暂停'],libraryFilter==='all'?'全部':libraryFilter)}</select></div></div><div class="project-grid" id="libraryGrid">${libraryCards()}</div><div class="alert" style="margin-top:27px">小说本机保存并自动云同步；已永久删除的书不会再从其他设备自动复活。需要清理自动生成的重复副本时，使用上方的清理按钮。重要稿件请另存 JSON 备份。</div></div>`;$('#libraryFilter').addEventListener('input',e=>{activeSearch=e.target.value;$('#libraryGrid').innerHTML=libraryCards()});$('#libraryStatus').addEventListener('change',e=>{libraryFilter=e.target.value==='全部'?'all':e.target.value;$('#libraryGrid').innerHTML=libraryCards()});}
 function libraryCards(){const q=activeSearch.trim().toLowerCase();let ps=state.projects.filter(p=>(libraryFilter==='all'||p.status===libraryFilter)&&[p.title,p.genre,p.tags,p.description].join(' ').toLowerCase().includes(q));return ps.map(p=>`<button class="card bookcard" data-openproject="${p.id}"><div class="cover ${p.theme==='blue'?'':escapeHTML(p.theme)}${mjCoverClass(p)}">${mjCoverImg(p)}<small>${escapeHTML(p.genre||'ORIGINAL FICTION')}</small><strong>${escapeHTML(p.title)}</strong></div><div class="bookbody"><div class="bigrow"><div class="booktitle">${escapeHTML(p.title)}</div><span class="chip blue">${escapeHTML(p.status)}</span></div><div class="bookmeta">${escapeHTML(shorten(p.description||p.tags||'尚未填写作品简介',35))}</div><div class="bookstats"><span>${fmt(total(p))} 字 · ${p.chapters.length} 章</span><span>${when(p.updatedAt)}</span></div></div></button>`).join('')+`<button class="card newbook" data-action="create-project"><span class="plus">${ico('plus','lg')}</span><strong>创建新作品</strong><span class="muted">小说 / 快穿 / 短篇 / 系列故事</span></button>`}
 function showDashboard(){const p=proj();if(!p)return setView('library');const ws=p.workspace,last=p.chapters.find(c=>c.id===ws.lastChapterId)||p.chapters.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0],wc=total(p),prog=Math.min(100,Math.round(wc/Math.max(1,p.goal)*100));$('#main').innerHTML=`<div class="wrap workspace-home"><div class="workspace-bookhead"><div class="workspace-bookcover cover ${p.theme==='blue'?'':escapeHTML(p.theme)}${mjCoverClass(p)}">${mjCoverImg(p)}<small>${escapeHTML(p.genre||'NOVEL')}</small><strong>${escapeHTML(p.title)}</strong><span class="cover-symbol">墨间 · 原创小说</span></div><div class="workspace-bookinfo"><div class="kicker">YOUR PERSONAL BOOK STUDIO / 独立小说工作室</div><h1>${escapeHTML(p.title)}</h1><p class="workspace-motto">${escapeHTML(ws.motto||p.description||'一本小说，一整个独立的创作世界。')}</p><div class="workspace-tags"><span class="chip blue">${escapeHTML(p.status)}</span><span class="chip">${escapeHTML(p.genre)}</span><span class="chip">${fmt(wc)} 字</span><span class="chip">${p.chapters.length} 章</span>${p.tags?`<span class="chip">${escapeHTML(shorten(p.tags,48))}</span>`:''}</div><div class="btnrow" style="margin-top:18px"><button class="btn primary" data-action="editor">${ico('pen','sm')}继续写作</button><button class="btn" data-action="reading">${ico('book','sm')}阅读本书</button><button class="btn" data-action="workspace-style">${ico('settings','sm')}本书外观</button><button class="btn" data-action="cover-upload">${ico('plus','sm')}更换封面</button><button class="btn" data-action="switch-book">${ico('grid','sm')}切换小说</button></div></div></div><div class="creation-flow" aria-label="本书创作流程"><span class="creation-flow-title">创作流程</span><button data-action="outline">${ico('layers','sm')} 定大纲</button><span class="flow-chevron">›</span><button data-action="scenes">${ico('list','sm')} 排剧情</button><span class="flow-chevron">›</span><button data-action="editor">${ico('pen','sm')} 写正文</button><span class="flow-chevron">›</span><button data-action="reading">${ico('book-open','sm')} 阅读校稿</button></div><div class="workspace-privacy-line">${ico('check','sm')}你现在位于《${escapeHTML(p.title)}》的专属工作空间。下方的章节、人物、大纲、脑图和 AI 对话仅属于这本作品。</div><div class="workspace-statgrid"><div class="workspace-stat"><span>已写正文</span><strong>${fmt(wc)} 字</strong></div><div class="workspace-stat"><span>章节总数</span><strong>${p.chapters.length} 章</strong></div><div class="workspace-stat"><span>分卷 / 世界</span><strong>${p.worlds.length} 个</strong></div><div class="workspace-stat"><span>人物档案</span><strong>${p.characters.length} 人</strong></div></div><div class="workspace-columns"><div class="workspace-primary"><div class="card"><div class="bigrow"><strong>继续这本书</strong><span class="chip">独立进度</span></div>${last?`<button class="workspace-lastchapter" data-chapter="${escapeHTML(last.id)}"><span class="chapter-index">${ico('pen')}</span><span><b>${escapeHTML(last.title)}</b><small>${escapeHTML(getWorld(p,last.worldId)?.title||'分卷')} · ${fmt(words(last.content))} 字 · 上次编辑 ${when(last.updatedAt)}</small></span>${ico('arrow')}</button>`:''}<div class="statbar" style="margin:15px 0 8px"><span style="width:${prog}%"></span></div><div class="bigrow muted"><span>本书已完成 ${prog}%</span><span>目标 ${fmt(p.goal)} 字</span></div></div><div class="card"><div class="bigrow"><strong>本书的世界 / 分卷</strong><button class="btn small" data-action="create-world">＋ 新增世界</button></div><div class="workspace-worldgrid">${p.worlds.map((w,i)=>`<button class="workspace-world" data-outline="${w.id}"><small>WORLD ${String(i+1).padStart(2,'0')}</small><b>${escapeHTML(w.title)}</b><span>${escapeHTML(shorten(w.intro||'还没有填写本世界的大纲',40))}</span><em>${p.chapters.filter(c=>c.worldId===w.id).length} 章</em></button>`).join('')}</div></div></div><div class="workspace-secondary"><div class="card"><div class="bigrow"><strong>本书独立便笺</strong><button class="btn small" data-action="workspace-style">编辑</button></div><div class="workspace-note">${escapeHTML(ws.deskNote||'可以在这里记录这本小说的创作方向、重要提醒、文风要求和灵感。它不会显示到其他作品。')}</div></div><div class="card"><strong>进入本书的创作页面</strong><div class="workspace-shortcuts"><button data-action="editor">${ico('pen')}<span>章节正文</span>${ico('arrow','sm')}</button><button data-action="outline">${ico('layers')}<span>世界与大纲</span>${ico('arrow','sm')}</button><button data-action="characters">${ico('users')}<span>人物与关系</span>${ico('arrow','sm')}</button><button data-action="mindmap">${ico('link')}<span>故事关系网</span>${ico('arrow','sm')}</button><button data-action="ai">${ico('download')}<span>AI 交换站</span>${ico('arrow','sm')}</button><button data-action="export-project">${ico('download')}<span>备份本书</span>${ico('arrow','sm')}</button></div></div></div></div></div>`}
 
@@ -1268,15 +1280,15 @@ const defaultTools=[
 let apiProfiles=[],activeApiId='',sessionApiKeys=new Map(),assistantTab='chat',assistantBusy=false,assistantAbort=null,customPrompts=[],promptCategory='全部';
 const newApiProfile=(name='新接口')=>({id:uid(),name,provider:'custom',baseUrl:'',model:'',models:[],temperature:0.85,maxTokens:2400,createdAt:Date.now()});
 function loadApiProfiles(){
- try{const saved=JSON.parse(localStorage.getItem('mojian_api_profiles_v6')||'{}');apiProfiles=Array.isArray(saved.profiles)?saved.profiles.filter(x=>x&&typeof x==='object').map(x=>({id:String(x.id||uid()),name:String(x.name||'未命名接口'),provider:String(x.provider||'custom'),baseUrl:String(x.baseUrl||''),model:String(x.model||''),models:Array.isArray(x.models)?x.models.filter(x=>typeof x==='string'):[],temperature:Number(x.temperature??0.85),maxTokens:Number(x.maxTokens??2400),createdAt:x.createdAt||Date.now()})):[];activeApiId=saved.activeId||''}catch(e){}
- if(!apiProfiles.length){try{let old=JSON.parse(localStorage.getItem('mojian_api_public_v5')||'null');if(old){apiProfiles=[{...newApiProfile('旧版导入接口'),provider:old.provider||'custom',baseUrl:old.baseUrl||'',model:old.model||'',models:old.models||[],temperature:Number(old.temperature??0.85),maxTokens:Number(old.maxTokens??2400)}];activeApiId=apiProfiles[0].id}}catch(e){}}
+ try{const saved=JSON.parse(localStorage.getItem(mojianLocalKey('mojian_api_profiles_v6'))||'{}');apiProfiles=Array.isArray(saved.profiles)?saved.profiles.filter(x=>x&&typeof x==='object').map(x=>({id:String(x.id||uid()),name:String(x.name||'未命名接口'),provider:String(x.provider||'custom'),baseUrl:String(x.baseUrl||''),model:String(x.model||''),models:Array.isArray(x.models)?x.models.filter(x=>typeof x==='string'):[],temperature:Number(x.temperature??0.85),maxTokens:Number(x.maxTokens??2400),createdAt:x.createdAt||Date.now()})):[];activeApiId=saved.activeId||''}catch(e){}
+ if(!apiProfiles.length){try{let old=JSON.parse(localStorage.getItem(mojianLocalKey('mojian_api_public_v5'))||'null');if(old){apiProfiles=[{...newApiProfile('旧版导入接口'),provider:old.provider||'custom',baseUrl:old.baseUrl||'',model:old.model||'',models:old.models||[],temperature:Number(old.temperature??0.85),maxTokens:Number(old.maxTokens??2400)}];activeApiId=apiProfiles[0].id}}catch(e){}}
  if(!apiProfiles.length){apiProfiles=[{...newApiProfile('硅基流动 · 我的模型'),provider:'siliconflow',baseUrl:providerPresets.siliconflow}];activeApiId=apiProfiles[0].id}
  if(!apiProfiles.some(p=>p.id===activeApiId))activeApiId=apiProfiles[0].id;
- try{const p=JSON.parse(localStorage.getItem('mojian_prompt_lib_v6')||'[]');customPrompts=Array.isArray(p)?p.filter(x=>x&&x.name&&x.prompt):[]}catch(e){}
+ try{const p=JSON.parse(localStorage.getItem(mojianLocalKey('mojian_prompt_lib_v6'))||'[]');customPrompts=Array.isArray(p)?p.filter(x=>x&&x.name&&x.prompt):[]}catch(e){}
  persistProfiles();
 }
-function persistProfiles(){try{localStorage.setItem('mojian_api_profiles_v6',JSON.stringify({activeId:activeApiId,profiles:apiProfiles.map(({key,...p})=>p)}))}catch(e){}}
-function persistPrompts(){try{localStorage.setItem('mojian_prompt_lib_v6',JSON.stringify(customPrompts))}catch(e){}}
+function persistProfiles(){try{localStorage.setItem(mojianLocalKey('mojian_api_profiles_v6'),JSON.stringify({activeId:activeApiId,profiles:apiProfiles.map(({key,...p})=>p)}))}catch(e){}}
+function persistPrompts(){try{localStorage.setItem(mojianLocalKey('mojian_prompt_lib_v6'),JSON.stringify(customPrompts))}catch(e){}}
 loadApiProfiles();
 function activeApi(){return apiProfiles.find(p=>p.id===activeApiId)||null}
 function getApiKey(id=activeApiId){return sessionApiKeys.get(id)||''}
@@ -1473,14 +1485,14 @@ function v9MakeDocx(p){const esc=t=>v9esc(t).replace(/&quot;/g,'&quot;').replace
 function v9MakeEPUB(p){const esc=v9esc;const chapters=p.worlds.flatMap(w=>p.chapters.filter(c=>c.worldId===w.id).map(c=>({w,c})));const files=[['mimetype','application/epub+zip'],['META-INF/container.xml','<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>']];const toc=chapters.map(({c},i)=>`<li><a href="chapter${i+1}.xhtml">${esc(c.title)}</a></li>`).join('');files.push(['OEBPS/nav.xhtml',`<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN"><head><title>目录</title></head><body><nav epub:type="toc" xmlns:epub="http://www.idpf.org/2007/ops"><h1>目录</h1><ol>${toc}</ol></nav></body></html>`]);chapters.forEach(({w,c},i)=>files.push([`OEBPS/chapter${i+1}.xhtml`,`<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN"><head><title>${esc(c.title)}</title><link rel="stylesheet" href="style.css" type="text/css"/></head><body><h2>${esc(w.title)} · ${esc(c.title)}</h2>${c.content.split(/\r?\n/).filter(Boolean).map(x=>`<p>${esc(x.trim())}</p>`).join('')}</body></html>`]));files.push(['OEBPS/style.css','body{font-family:serif;line-height:1.85;margin:5%}h2{text-align:center}p{text-indent:2em;margin:.5em 0;}']);const manifest='<item id="nav" href="nav.xhtml" properties="nav" media-type="application/xhtml+xml"/><item id="style" href="style.css" media-type="text/css"/>'+chapters.map((_,i)=>`<item id="chapter${i+1}" href="chapter${i+1}.xhtml" media-type="application/xhtml+xml"/>`).join('');const spine=chapters.map((_,i)=>`<itemref idref="chapter${i+1}"/>`).join('');files.push(['OEBPS/package.opf',`<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid" xml:lang="zh-CN"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">urn:uuid:${p.id}</dc:identifier><dc:title>${esc(p.title)}</dc:title><dc:language>zh-CN</dc:language></metadata><manifest>${manifest}</manifest><spine>${spine}</spine></package>`]);return zipStore(files)}
 function v9ExportType(type){const p=proj();if(!p)return;const safe=p.title.replace(/[\\/:*?"<>|]/g,'_').slice(0,70);if(type==='txt')v9Download(safe+'.txt',p.worlds.map(w=>w.title+'\n\n'+p.chapters.filter(c=>c.worldId===w.id).map(c=>c.title+'\n\n'+c.content).join('\n\n')).join('\n\n'));if(type==='md')v9Download(safe+'.md',fullBookMarkdown(p));if(type==='epub')v9Download(safe+'.epub',v9MakeEPUB(p));if(type==='docx')v9Download(safe+'.docx',v9MakeDocx(p));toast('已准备 '+type.toUpperCase()+' 文件')}
 // Snapshot cache is separate from project state; clear browser data will still remove these snapshots.
-const v9SnapshotKey='mojian_v9_snapshots';
+let v9SnapshotKey='mojian_v9_snapshots';
 function v9GetSnapshots(){try{return JSON.parse(localStorage.getItem(v9SnapshotKey)||'[]')}catch{return []}}
 function v9SaveSnapshot(manual=false){try{const list=v9GetSnapshots(),s=JSON.stringify(state);const last=list[list.length-1];if(!manual&&last&&Date.now()-last.at<24*3600e3)return;list.push({id:uid(),at:Date.now(),manual,data:s,books:state.projects.length,bytes:s.length});while(list.length>5)list.shift();localStorage.setItem(v9SnapshotKey,JSON.stringify(list));if(manual)toast('已在本机保存快照（请定期另行导出文件）')}catch(e){toast('本机快照空间不足，请导出 JSON 备份')}}
 const MOJIAN_CLOUD_ENDPOINT='https://env-00jy6yboltpp.dev-hz.cloudbasefunction.cn/mojian-sync';
 let v9Cloud={url:MOJIAN_CLOUD_ENDPOINT,revision:0};let v9CloudTimer=null;
-function v9CloudConfig(){try{const old=JSON.parse(localStorage.getItem('mojian_v9_cloud_config')||'{}');v9Cloud={url:MOJIAN_CLOUD_ENDPOINT,revision:old.url===MOJIAN_CLOUD_ENDPOINT?(old.revision||0):0}}catch(e){v9Cloud={url:MOJIAN_CLOUD_ENDPOINT,revision:0}}}
-function v9CloudStore(){localStorage.setItem('mojian_v9_cloud_config',JSON.stringify(v9Cloud))}
-function v9CloudToken(){return sessionStorage.getItem('mojian_auth_v1')||localStorage.getItem('mojian_auth_v1')||''}
+function v9CloudConfig(){try{const old=JSON.parse(localStorage.getItem(mojianLocalKey('mojian_v9_cloud_config'))||'{}');v9Cloud={url:MOJIAN_CLOUD_ENDPOINT,revision:old.url===MOJIAN_CLOUD_ENDPOINT?(old.revision||0):0}}catch(e){v9Cloud={url:MOJIAN_CLOUD_ENDPOINT,revision:0}}}
+function v9CloudStore(){localStorage.setItem(mojianLocalKey('mojian_v9_cloud_config'),JSON.stringify(v9Cloud))}
+function v9CloudToken(){return sessionStorage.getItem('mojian_auth_v2')||localStorage.getItem('mojian_auth_v2')||''}
 function v9CloudUrl(){const u=new URL(v9Cloud.url);if(u.protocol!=='https:'&&!['localhost','127.0.0.1'].includes(u.hostname))throw Error('云同步服务必须使用 HTTPS');return u.toString().replace(/\/$/,'')}
 async function v9CloudRequest(method,body){
  const base=v9CloudUrl(),token=v9CloudToken();if(!token)throw Error('请先登录私人书库');
@@ -1574,12 +1586,12 @@ window.addEventListener('focus',()=>{if(!state?.projects?.length||v92ReminderFir
 const v93esc=escapeHTML;
 const v93Date=t=>new Date(t||Date.now()).toLocaleString('zh-CN',{hour12:false});
 const v93P=()=>proj();
-const v93Storage='mojian_v93_prefs';
+let v93Storage='mojian_v93_prefs';
 let v93Prefs={customFont:'',autoSync:true,syncMins:1,treeWidth:232,asideWidth:250,hideTree:false,hideAside:false,priceRules:{},badWords:'',timerMinutes:25,...(()=>{try{return JSON.parse(localStorage.getItem(v93Storage)||'{}')}catch{return{}}})()};
 let v93Fonts=(()=>{try{return JSON.parse(localStorage.getItem('mojian_v93_fonts')||'[]')}catch{return []}})();
 let v93FontURLs=[],v93Timer={deadline:0,started:0,work:0,paused:0,running:false};
 let v93SyncBusy=false,v93SyncMessage='未连接',v93SyncConflict=null;
-const v93SyncKey='mojian_v93_sync_hash';
+let v93SyncKey='mojian_v93_sync_hash';
 // 一次性升级：旧版本默认关闭云同步，这一版默认开启；保留后续由用户主动关闭的选择。
 try{if(!localStorage.getItem('mojian_autosync_migrated_20261020')){v93Prefs.autoSync=true;v93Prefs.syncMins=1;localStorage.setItem(v93Storage,JSON.stringify(v93Prefs));localStorage.setItem('mojian_autosync_migrated_20261020','1')}}catch(e){}
 
@@ -1625,7 +1637,7 @@ function v93PrintBook(){const p=proj();if(!p)return;const root=window.open('','_
 function v93SyncSignature(x){const clean=(x.projects||[]).map(p=>({...p,workspace:{...(p.workspace||{}),lastView:null,lastChapterId:null,lastWorldId:null}}));const str=JSON.stringify({projects:clean,trash:x.trash,bookOperations:x.bookOperations||{}});let h=2166136261;for(let i=0;i<str.length;i++)h=Math.imul(h^str.charCodeAt(i),16777619);return String(h>>>0)}
 function v93GetLastHash(){try{return localStorage.getItem(v93SyncKey)||''}catch{return''}}
 function v93SetHash(){localStorage.setItem(v93SyncKey,v93SyncSignature(state))}
-const v93AutoBaseKey='mojian_v93_auto_cloud_base_v1';
+let v93AutoBaseKey='mojian_v93_auto_cloud_base_v1';
 let v93AutoQueue=null, v93AutoSyncRepeat=false, v93AutoLastPoll=0;
 function v93BookFingerprint(p){
  const w={...p,workspace:{...(p.workspace||{}),lastView:null,lastChapterId:null,lastWorldId:null}};
@@ -1845,99 +1857,162 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-v93
 setTimeout(()=>{v93RestoreFonts().catch(console.warn);v93ApplyPrefs()},1400);
 
 
-/* 墨间 V9.3 私人云端账号：自动地址、密码登录。旧作品与编辑器保持原状。 */
-const mojianAuthState={busy:false,setupComplete:null,connected:false};
-function mojianAuthEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* 墨间 V9.4 多账号管理：云端区分角色，只有总号可以开户。 */
+const mojianAuthState={busy:false,setupComplete:null,connected:false,user:null};
+function mojianAuthEsc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function mojianAuthNote(msg,isError=false){const e=document.getElementById('mojanAuthMsg');if(e){e.textContent=msg;e.style.color=isError?'#c33b4c':'#59667c'}}
 async function mojianApi(path,method='GET',data=null){
  const writing=method==='POST';
- let r;try{r=await fetch(MOJIAN_CLOUD_ENDPOINT+path,{method,headers:writing?{'Content-Type':'text/plain;charset=UTF-8'}:{},body:writing?JSON.stringify(data||{}):undefined,cache:'no-store',credentials:'omit'});}
- catch(e){throw Error('连接云端失败：请确认部署了 simple-post-v2（'+e.message+'）')}
+ const payload=writing?{...(data||{})}:null;
+ let r;try{r=await fetch(MOJIAN_CLOUD_ENDPOINT+path,{method,headers:writing?{'Content-Type':'text/plain;charset=UTF-8'}:{},body:writing?JSON.stringify(payload):undefined,cache:'no-store',credentials:'omit'});}
+ catch(e){throw Error('无法连接云端：'+e.message)}
  const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'云端 HTTP '+r.status);return j;
 }
 function mojianAuthShow(mode='login'){
  const root=document.getElementById('mojianAuthWall');if(!root)return;
  root.hidden=false;document.body.classList.add('mojan-locked');
- const ready=mojianAuthState.setupComplete;
- const current=ready===false?'setup':mode;
- const login=current==='login', setup=current==='setup', reset=current==='reset';
- root.innerHTML=`<div class="mojan-card"><div class="mojan-symbol">墨</div><div class="mojan-eyebrow">MOJIAN / PERSONAL CLOUD</div><h1>${setup?'设置你的私人书库密码':reset?'重设私人密码':'欢迎回到墨间'}</h1><p class="mojan-blurb">云端已自动配置。${setup?'首次需要使用之前生成的长密钥验证归属；以后不再填写长密钥。':reset?'使用原始长密钥验证后可修改密码，其他设备需要重新登录。':'输入密码即可进入书库，小说数据不会因为登录而被自动覆盖。'}</p><form id="mojanForm" autocomplete="on">${login?'':`<label for="mojanOwner">原始 64 位长密钥（仅${reset?'重设':'首次设置'}需要）</label><input type="password" id="mojanOwner" autocomplete="off" spellcheck="false" required placeholder="在 HBuilderX 配置过的那串密钥">`}<label for="mojanPass">${login?'私人登录密码':'设置新密码（至少10位）'}</label><input type="password" id="mojanPass" autocomplete="${login?'current-password':'new-password'}" minlength="${login?1:10}" required placeholder="输入你自己的密码">${login?'':`<label for="mojanPassAgain">再次输入密码</label><input type="password" id="mojanPassAgain" autocomplete="new-password" minlength="10" required placeholder="确认新密码">`}<label class="mojan-remember"><input type="checkbox" id="mojanRemember" ${login?'checked':''}>在这台私人设备保持登录（最多7天；公用电脑请取消）</label><button class="mojan-primary" type="submit">${setup?'完成首次设置':reset?'更新密码':'解锁并连接云端'}</button></form><div class="mojan-msg" id="mojanAuthMsg" role="status"></div><div class="mojan-foot">${login?'<button type="button" data-mojan-switch="reset">忘记密码？用原始长密钥重设</button>':`<button type="button" data-mojan-switch="login">返回登录</button>`}</div><div class="mojan-safe">所有旧稿都保留在本地；首次云端同步需你确认。登录密码只用于身份验证，并不加密浏览器里的本地稿件。</div></div>`;
- const f=document.getElementById('mojanForm');f.addEventListener('submit',mojianAuthSubmit);
+ const current=mojianAuthState.setupComplete===false?'setup':mode;
+ const login=current==='login',setup=current==='setup',reset=current==='reset';
+ root.innerHTML=`<div class="mojan-card"><div class="mojan-symbol">墨</div><div class="mojan-eyebrow">MOJIAN / MEMBER CLOUD</div><h1>${setup?'设置总账号':reset?'找回总账号密码':'欢迎回到墨间'}</h1><p class="mojan-blurb">${setup?'只有持有原始云端所有者密钥的人可以首次设置管理员。':reset?'使用原始所有者密钥找回总账号密码。':'输入账号和密码进入自己的独立书库。只有总账号可以为别人创建账号。'}</p><form id="mojanForm" autocomplete="on">${!login?`<label for="mojanOwner">原始所有者密钥</label><input type="password" id="mojanOwner" autocomplete="off" required placeholder="首次设置或找回密码时填写">`:''}<label for="mojanUsername">账号</label><input id="mojanUsername" value="${setup||reset?'changchunlu9':''}" ${login?'':'readonly'} autocomplete="username" spellcheck="false" required placeholder="输入账号"><label for="mojanPass">${login?'登录密码':'新密码（至少10位）'}</label><input type="password" id="mojanPass" autocomplete="${login?'current-password':'new-password'}" minlength="${login?1:10}" required placeholder="${login?'输入密码':'设置新密码'}">${login?'':`<label for="mojanPassAgain">确认新密码</label><input type="password" id="mojanPassAgain" autocomplete="new-password" minlength="10" required>`}${login?'<label class="mojan-remember"><input type="checkbox" id="mojanRemember" checked>在此设备保持登录（最多7天；公共设备请取消）</label>':''}<button class="mojan-primary" type="submit">${setup?'设置总账号':reset?'更新管理员密码':'登录我的书库'}</button></form><div class="mojan-msg" id="mojanAuthMsg" role="status"></div><div class="mojan-foot">${login?'<button type="button" data-mojan-switch="reset">总账号忘记密码？</button>':`<button type="button" data-mojan-switch="login">返回登录</button>`}</div><div class="mojan-safe">每个账号单独储存小说、草稿和同步版本。普通用户不能注册或管理其他账号。</div></div>`;
+ root.querySelector('#mojanForm').addEventListener('submit',mojianAuthSubmit);
  root.querySelector('[data-mojan-switch]')?.addEventListener('click',()=>mojianAuthShow(root.querySelector('[data-mojan-switch]').dataset.mojanSwitch));
 }
-async function mojianAuthSubmit(event){event.preventDefault();if(mojianAuthState.busy)return;
- const root=document.getElementById('mojianAuthWall'), mode=root.querySelector('h1').textContent;
- const login=mode==='欢迎回到墨间',reset=mode==='重设私人密码';
+async function mojianApplyAccount(info){
+ if(!info||!info.uid||!['admin','member'].includes(info.role))throw Error('云端未返回有效账户身份');
+ mojianAccount={uid:info.uid,username:info.username,role:info.role};
+ MOJIAN_DRAFT_GUARD_KEY=mojianLocalKey('mojian_body_guard_20261020_v1');
+ v9SnapshotKey=mojianLocalKey('mojian_v9_snapshots');
+ v93Storage=mojianLocalKey('mojian_v93_prefs');
+ v93SyncKey=mojianLocalKey('mojian_v93_sync_hash');
+ v93AutoBaseKey=mojianLocalKey('mojian_v93_auto_cloud_base_v1');
+ v93Prefs={customFont:'',autoSync:true,syncMins:1,treeWidth:232,asideWidth:250,hideTree:false,hideAside:false,priceRules:{},badWords:'',timerMinutes:25,...(()=>{try{return JSON.parse(localStorage.getItem(v93Storage)||'{}')}catch(e){return {}}})()};
+ v93Prefs.autoSync=true;
+ v9CloudConfig();
+ sessionApiKeys.clear();apiProfiles=[];activeApiId='';customPrompts=[];loadApiProfiles();
+ v93SyncBusy=false;v93SyncConflict=null;v93SyncMessage='正在加载 '+info.username+' 的书库';
+ clearTimeout(saveTimer);
+ if(typeof v93AutoQueue!=='undefined'&&v93AutoQueue)clearTimeout(v93AutoQueue);
+ await init(); // 强制从该账户专属 IndexedDB 键加载；普通账号绝不导入总账号旧稿。
+ v93SavePrefs();
+}
+async function mojianAuthSubmit(event){
+ event.preventDefault();if(mojianAuthState.busy)return;
+ const root=document.getElementById('mojianAuthWall'),title=root.querySelector('h1').textContent;
+ const login=title==='欢迎回到墨间',reset=title==='找回总账号密码';
  const password=document.getElementById('mojanPass').value;
- if(!login&&(password!==document.getElementById('mojanPassAgain').value))return mojianAuthNote('两次输入的密码不一致',true);
- mojianAuthState.busy=true;root.querySelector('.mojan-primary').disabled=true;mojianAuthNote('正在连接你的私人云端…');
+ if(!login&&password!==document.getElementById('mojanPassAgain').value)return mojianAuthNote('两次密码不一致',true);
+ mojianAuthState.busy=true;root.querySelector('.mojan-primary').disabled=true;mojianAuthNote('正在验证账号…');
  try{
   if(!login){
-    const ownerKey=document.getElementById('mojanOwner').value.trim();
-    if(!/^[a-f0-9]{64}$/i.test(ownerKey))throw Error('原始长密钥应该是64位十六进制字符');
-    await mojianApi(reset?'/api/auth/reset':'/api/auth/setup','POST',{ownerKey,password});
-    mojianAuthState.setupComplete=true;
-    mojianAuthShow('login');mojianAuthNote('密码已设置，请用新密码登录。');return;
+    await mojianApi(reset?'/api/auth/reset':'/api/auth/setup','POST',{ownerKey:document.getElementById('mojanOwner').value.trim(),password});
+    mojianAuthState.setupComplete=true;mojianAuthShow('login');mojianAuthNote('已设置密码，请使用总账号登录');return;
   }
+  const username=document.getElementById('mojanUsername').value.trim();
   const remember=!!document.getElementById('mojanRemember').checked;
-  const res=await mojianApi('/api/auth/login','POST',{password,remember});
+  const res=await mojianApi('/api/auth/login','POST',{username,password,remember});
   localStorage.removeItem('mojian_auth_v1');sessionStorage.removeItem('mojian_auth_v1');
-  (remember?localStorage:sessionStorage).setItem('mojian_auth_v1',res.token);
-  mojianAuthState.connected=true;
-  root.hidden=true;document.body.classList.remove('mojan-locked');
+  localStorage.removeItem('mojian_auth_v2');sessionStorage.removeItem('mojian_auth_v2');
+  (remember?localStorage:sessionStorage).setItem('mojian_auth_v2',res.token);
+  mojianAuthState.user={uid:res.uid,username:res.username,role:res.role};
+  mojianAuthState.connected=false;
   await mojianAfterLogin();
+  root.hidden=true;document.body.classList.remove('mojan-locked');
  }catch(e){mojianAuthNote(e.message,true)}finally{mojianAuthState.busy=false;const btn=root.querySelector('.mojan-primary');if(btn)btn.disabled=false}
 }
 function mojianAuthLogout(show=true){
- sessionStorage.removeItem('mojian_auth_v1');localStorage.removeItem('mojian_auth_v1');sessionStorage.removeItem('mojian_v9_cloud_token');
- mojianAuthState.connected=false;v93Prefs.autoSync=false;v93SavePrefs();
+ sessionStorage.removeItem('mojian_auth_v2');localStorage.removeItem('mojian_auth_v2');
+ sessionStorage.removeItem('mojian_auth_v1');localStorage.removeItem('mojian_auth_v1');
+ mojianAuthState.connected=false;mojianAuthState.user=null;mojianAccount=null;
+ sessionApiKeys.clear();state=defaults();v93SyncMessage='未登录';
+ document.getElementById('mojanManage')?.remove();
  if(show)mojianAuthShow('login');
 }
 async function mojianAfterLogin(){
- try{
-  await mojianInitReady;
-  mojianAuthState.connected=true;
-  v93Prefs.autoSync=true;v93SavePrefs();
-  const done=await v93SyncRun(true);
-  if(done)toast('已登录 · 书库已自动同步');
-  else toast('已登录 · 小说已保留在本机，云同步将自动重试');
-  render();
- }catch(e){
-  mojianAuthState.connected=true;
-  v93SyncMessage='登录后同步异常，本机作品已保留：'+e.message;
-  console.error('墨间自动同步初始化失败',e);
-  render();
- }
+ await mojianInitReady;
+ await mojianApplyAccount(mojianAuthState.user);
+ mojianAuthState.connected=true;
+ try{const ok=await v93SyncRun(true);if(!ok)toast('本机稿已保存，云同步稍后重试');}
+ catch(e){v93SyncMessage='暂无法同步：'+e.message;toast('登录成功，云端同步暂不可用')} 
+ render();
 }
-
 async function mojianAuthBoot(){
  const root=document.getElementById('mojianAuthWall');if(!root)return;
  root.hidden=false;document.body.classList.add('mojan-locked');
- root.innerHTML='<div class="mojan-card"><div class="mojan-symbol">墨</div><h1>正在连接你的私人书库…</h1><p class="mojan-blurb">自动查找已部署的支付宝云，无需输入网址。</p></div>';
+ root.innerHTML='<div class="mojan-card"><div class="mojan-symbol">墨</div><h1>正在连接墨间账户…</h1></div>';
  try{
   const info=await mojianApi('/api/auth/status');mojianAuthState.setupComplete=!!info.setupComplete;
-  if(!info.setupComplete){mojianAuthShow('setup');return;}
+  if(!info.setupComplete){mojianAuthShow('setup');return}
   const token=v9CloudToken();
   if(token){
-    try{await v9CloudRequest('META');root.hidden=true;document.body.classList.remove('mojan-locked');await mojianAfterLogin();return}
-    catch(e){sessionStorage.removeItem('mojian_auth_v1');localStorage.removeItem('mojian_auth_v1')}
+    try{
+      const me=await mojianApi('/api/account/me','POST',{session:token});
+      mojianAuthState.user={uid:me.uid,username:me.username,role:me.role};
+      await mojianAfterLogin();root.hidden=true;document.body.classList.remove('mojan-locked');return;
+    }catch(e){localStorage.removeItem('mojian_auth_v2');sessionStorage.removeItem('mojian_auth_v2');}
   }
   mojianAuthShow('login');
- }catch(e){
-  mojianAuthState.setupComplete=null;mojianAuthShow('login');
-  mojianAuthNote('云端暂时无法连接：'+e.message+'。请先把新版云函数上传到支付宝云，再刷新页面。',true);
- }
+ }catch(e){mojianAuthState.setupComplete=null;mojianAuthShow('login');mojianAuthNote('连接失败：请先更新云函数，再刷新。'+e.message,true)}
 }
-document.addEventListener('click',e=>{
- const el=e.target.closest('[data-mojian-auth]');if(!el)return;
- if(el.dataset.mojianAuth==='status'){
-  const ok=mojianAuthState.connected;
-  if(!ok)return mojianAuthShow('login');
-  if(confirm('当前已登录私人云端。\n【确定】退出登录并锁定书库\n【取消】继续写作'))mojianAuthLogout(true);
+function mojianAccountWindow(html){
+ document.getElementById('mojanManage')?.remove();
+ const el=document.createElement('div');el.id='mojanManage';el.className='mojan-manage-mask';
+ el.innerHTML=`<div class="mojan-manage-card"><div class="mojan-manage-head"><h2>墨间 · 账户设置</h2><button type="button" class="btn" data-mojian-admin="close">关闭</button></div>${html}</div>`;
+ document.body.appendChild(el);
+}
+async function mojianOpenAccountManager(){
+ if(mojianAccount?.role!=='admin')return toast('只有总账号能管理用户');
+ mojianAccountWindow('<p>正在读取子账号…</p>');
+ try{
+  const result=await mojianApi('/api/account/list','POST',{session:v9CloudToken()});
+  mojianAccountWindow(`<p class="sub">总账号：${mojianAuthEsc(mojianAccount.username)}。只有你可以创建、停用及重设子账号密码，所有书库互不串稿。</p><form id="mojanAddUser"><h3>新增子账号</h3><div class="mojan-fieldrow"><input id="mojanNewUser" class="input" required pattern="[A-Za-z][A-Za-z0-9_-]{2,31}" autocomplete="off" placeholder="账号（英文/数字）"><input id="mojanNewPassword" class="input" type="password" minlength="10" required autocomplete="new-password" placeholder="初始密码（至少10位）"><button class="btn primary" type="submit">创建账号</button></div></form><h3>已有子账号（${result.users.length}）</h3><div class="mojan-users">${result.users.length?result.users.map(u=>`<div class="mojan-user" data-mojian-name="${mojianAuthEsc(u.username)}"><div><b>${mojianAuthEsc(u.username)}</b><small>${u.disabled?'已停用':'正常使用'}</small></div><input class="input mojan-reset-password" type="password" minlength="10" placeholder="新密码，至少10位" autocomplete="new-password"><button class="btn" data-mojian-admin="reset" data-name="${mojianAuthEsc(u.username)}">重置密码</button><button class="btn ${u.disabled?'':'danger'}" data-mojian-admin="toggle" data-name="${mojianAuthEsc(u.username)}" data-disabled="${u.disabled?'0':'1'}">${u.disabled?'重新启用':'停用账号'}</button></div>`).join(''):'<p>还没有子账号。</p>'}</div><p class="sub">停用及重置密码会让该子账号原有的登录状态失效；不会删除对方已经保存的小说。</p><p id="mojanManageMsg" role="status"></p>`);
+  document.getElementById('mojanAddUser').addEventListener('submit',async e=>{
+    e.preventDefault();const name=document.getElementById('mojanNewUser').value.trim(),password=document.getElementById('mojanNewPassword').value;
+    try{await mojianApi('/api/account/create','POST',{session:v9CloudToken(),username:name,password});toast('已创建子账号：'+name);await mojianOpenAccountManager()}
+    catch(err){document.getElementById('mojanManageMsg').textContent=err.message}
+  });
+ }catch(e){mojianAccountWindow('<p>无法获取子账号：'+mojianAuthEsc(e.message)+'</p>')}
+}
+function mojianOpenChangePassword(){
+ if(!mojianAccount)return toast('请先登录');
+ mojianAccountWindow(`<p class="sub">当前登录：${mojianAuthEsc(mojianAccount.username)}。修改成功后需要重新登录，其它设备的旧登录也会失效。</p><form id="mojanChangePassword"><label>当前密码</label><input class="input" name="current" type="password" autocomplete="current-password" required><label>新密码（至少10位）</label><input class="input" name="next" type="password" minlength="10" autocomplete="new-password" required><label>再输入一次新密码</label><input class="input" name="again" type="password" minlength="10" autocomplete="new-password" required><p><button class="btn primary" type="submit">确认修改</button></p></form><p id="mojanManageMsg" role="status"></p>`);
+ document.getElementById('mojanChangePassword').addEventListener('submit',async e=>{
+  e.preventDefault();const form=e.currentTarget,old=form.elements.current.value,now=form.elements.next.value;
+  if(now!==form.elements.again.value){document.getElementById('mojanManageMsg').textContent='两次新密码不一致';return}
+  try{await save();await mojianApi('/api/account/password','POST',{session:v9CloudToken(),currentPassword:old,newPassword:now});mojianAuthLogout(true);mojianAuthNote('密码已修改，请重新登录');}
+  catch(err){document.getElementById('mojanManageMsg').textContent=err.message}
+ });
+}
+document.addEventListener('click',async e=>{
+ const auth=e.target.closest('[data-mojian-auth]');
+ if(auth?.dataset.mojianAuth==='status'){
+  if(!mojianAuthState.connected)return mojianAuthShow('login');
+  if(confirm('当前账号：'+mojianAccount.username+'。\n确定要退出登录吗？')){
+   try{await save()}catch(err){if(!confirm('当前本机保存可能失败。仍要退出吗？'))return}
+   mojianAuthLogout(true);
+  }
+  return;
  }
+ if(e.target.closest('[data-mojian-account="password"]'))return mojianOpenChangePassword();
+ const btn=e.target.closest('[data-mojian-admin]');if(!btn)return;
+ const act=btn.dataset.mojianAdmin;
+ if(act==='open')return mojianOpenAccountManager();
+ if(act==='close')return document.getElementById('mojanManage')?.remove();
+ if(mojianAccount?.role!=='admin')return toast('没有权限');
+ const name=btn.dataset.name,row=btn.closest('.mojan-user');
+ try{
+  if(act==='reset'){
+   const password=row?.querySelector('.mojan-reset-password')?.value||'';
+   if(password.length<10)return toast('请先输入至少10位的新密码');
+   if(!confirm('确认重置 '+name+' 的密码？对方需重新登录。'))return;
+   await mojianApi('/api/account/reset-password','POST',{session:v9CloudToken(),username:name,password});toast('密码已重置');await mojianOpenAccountManager();
+  }else if(act==='toggle'){
+   const disabled=btn.dataset.disabled==='1';
+   if(!confirm((disabled?'停用':'启用')+' '+name+'？'))return;
+   await mojianApi('/api/account/toggle','POST',{session:v9CloudToken(),username:name,disabled});toast('账号状态已更新');await mojianOpenAccountManager();
+  }
+ }catch(err){const status=document.getElementById('mojanManageMsg');if(status)status.textContent=err.message;else toast(err.message)}
 });
 setTimeout(mojianAuthBoot,100);
-
 const mojianInitReady=init();
 })();
 </script>
