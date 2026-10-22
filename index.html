@@ -667,10 +667,14 @@ body.nav-layer-open #sidebar{position:relative;z-index:60}
 .cover.mj-has-photo:before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(5,10,20,.25),rgba(5,10,20,.03) 40%,rgba(5,10,20,.52));pointer-events:none}
 .cover.mj-has-photo>*:not(.mj-book-photo){position:relative;z-index:2;text-shadow:0 1px 5px rgba(0,0,0,.45)}
 
-/* 墨间 V9.4 手机菜单补丁：移除多余的顶端占位标题。 */
+/* 墨间 V9.4.2 手机菜单去空隙：压缩顶部占位，不改变桌面排版。 */
 @media (max-width:660px) {
-  #sidebar .nav-content > .navhead { display:none!important; }
-  #sidebar .nav-content > .nav-scroll > .navgroup:first-child { margin-top:8px; }
+  #sidebar .nav-content {display:flex!important;flex-direction:column!important;justify-content:flex-start!important;padding-top:0!important;margin-top:0!important;}
+  #sidebar .nav-content > .navhead {display:none!important;height:0!important;min-height:0!important;max-height:0!important;padding:0!important;margin:0!important;border:0!important;}
+  #sidebar .nav-content > .nav-scroll {min-height:0!important;flex:1 1 auto!important;padding-top:0!important;margin-top:0!important;}
+  #sidebar .nav-content > .nav-scroll > .navgroup:first-child {margin-top:0!important;padding-top:0!important;}
+  #sidebar .nav-content > .nav-scroll > .navgroup:first-child > .navgroup-title {padding-top:8px!important;padding-bottom:5px!important;margin-top:0!important;}
+  #sidebar .nav-content > .nav-scroll > .navgroup:first-child > .navlist {padding-top:0!important;}
 }
 </style>
 <link rel="manifest" href="./manifest.webmanifest"><style id="mojian-auth-style">
@@ -930,6 +934,7 @@ function renderSidebar(){const p=proj(),inside=p&&state.view!=='library'&&!['tra
  }else{s+=navGroup('我的创作空间',nav('library','全部小说 · 总书库','grid',state.projects.length));s+=navGroup('工具与管理',nav('search','跨作品搜索','search')+navTool('export-all','备份全部小说','archive')+navTool('import','导入作品备份','download')+nav('trash','回收站','trash',state.trash.length)+nav('settings','全局偏好设置','settings')+(mojianAccount?.role==='admin'?`<button class="navitem" data-mojian-admin="open" title="账号管理（总号专用）">${ico('users')}<span class="navlabel">账号管理（总号）</span></button>`:''));}
  s+=`</div><div class="navfoot"><span>${inside?`<strong>${fmt(total(p))} 字</strong> · ${p.worlds.length} 个世界`:state.projects.length+' 本小说'}</span><small>定期备份作品，防止浏览器数据意外丢失</small>${inside?`<div class="tinyprog"><span style="width:${Math.min(100,total(p)/Math.max(1,p.goal)*100)}%"></span></div>`:''}</div></div>`;
  $('#sidebar').innerHTML=s;
+  $('#sidebar').dataset.mobileMenuLayout='compact-v942';
  restoreSidebarMenuScroll(inside?'book:'+p.id:'global');
 }
 
