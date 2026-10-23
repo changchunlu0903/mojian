@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
+<head><meta name="mojian-version" content="9.5.0">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#002fa7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><title>墨间 V9.3 · 私人云端书库</title>
+<meta name="theme-color" content="#002fa7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><title>墨间 V9.5 · V9.3 · 私人云端书库</title>
 <style>
 :root{--blue:#002fa7;--blue-bright:#315bdb;--ink:#141923;--muted:#7d8798;--bg:#f5f6f9;--paper:#fff;--panel:#fff;--soft:#f1f3f8;--line:#e4e7ef;--nav:#111724;--navtext:#aeb9ce;--gold:#bc925d;--red:#b54353;--green:#187f66;--shadow:0 10px 35px rgba(17,30,62,.045);--fontsize:19px;--lineheight:2;--editorfont:'Songti SC','STSong','Noto Serif CJK SC',serif}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,'PingFang SC','Microsoft Yahei',system-ui,-apple-system,sans-serif;font-size:14px}button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;border:0;background:none}button:disabled{opacity:.42;cursor:default}input,textarea,select{color:var(--ink)}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #7294ff;outline-offset:2px}.hidden{display:none!important}.ico{width:19px;height:19px;flex:none;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}.ico.sm{width:15px;height:15px}.ico.lg{width:25px;height:25px}.ico.xl{width:32px;height:32px}
@@ -744,6 +744,71 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
 .mojan-user small{display:block;color:#66748c}.mojan-manage-card .btn{white-space:nowrap}
 @media(max-width:700px){.mojan-manage-card{padding:18px}.mojan-fieldrow,.mojan-user{grid-template-columns:1fr 1fr}.mojan-fieldrow button{grid-column:span 2}.mojan-user .input{grid-column:2}.mojan-user .btn{white-space:normal}}
 </style>
+<style id="mojian-v95-style">
+
+/* V9.5 -- save state and time machine, independent of the V9.4.4 mobile drawer fix */
+.v95-status-strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:7px 0 4px;font:500 11px/1.4 system-ui,sans-serif}
+.v95-status-strip>span{display:inline-flex;align-items:center;gap:5px;border-radius:100px;padding:5px 9px;background:var(--soft);color:var(--muted);white-space:normal}
+.v95-status-strip>span:before{content:"";width:6px;height:6px;flex:none;border-radius:100%;background:#9da5b2}
+.v95-status-strip>span[data-state=ready]:before,.v95-status-strip>span[data-state=synced]:before{background:#28a274}
+.v95-status-strip>span[data-state=error]:before,.v95-status-strip>span[data-state=offline]:before{background:#d56b4e}
+.v95-status-strip>span[data-state=pending]:before,.v95-status-strip>span[data-state=saving]:before{background:#d5a446}
+.v95-time-link,.v95-mobile-chapters button{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:6px 10px;font-size:12px;color:var(--ink);font-weight:650}
+.v95-time-link{margin-left:auto}
+.v95-mobile-chapters{display:none}
+.v95-time-shade{position:fixed;inset:0;display:grid;place-items:center;z-index:120000;background:#091328bc;padding:14px;color:var(--ink)}
+.v95-time-card{width:min(960px,100%);max-height:min(90dvh,860px);display:flex;flex-direction:column;min-height:0;overflow:hidden;border-radius:17px;background:var(--panel);box-shadow:0 30px 90px #0004}
+.v95-time-card header{flex:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.v95-time-card header b{font-size:19px}.v95-time-card header p{font-size:12px;color:var(--muted);margin:5px 0 0}
+.v95-time-card header button{font-size:26px;border-radius:10px;padding:3px 12px;color:var(--ink)}
+.v95-time-main{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:0;flex:1}
+.v95-time-list{padding:16px;border-right:1px solid var(--line);overflow:auto}
+.v95-time-list>button{display:flex;flex-direction:column;align-items:start;gap:4px;text-align:left;padding:10px;width:100%;border:1px solid var(--line);border-radius:10px;margin:8px 0;color:var(--ink)}
+.v95-time-list button.active{border-color:var(--blue);background:color-mix(in srgb,var(--blue) 7%,var(--panel))}
+.v95-time-list button small,.v95-muted{font-size:12px;color:var(--muted);line-height:1.55}
+.v95-time-list>.v95-time-new{background:var(--blue);color:white;align-items:center;text-align:center;display:block}
+.v95-time-preview{padding:20px;overflow:auto;min-height:150px}
+.v95-time-preview details{border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}
+.v95-time-preview summary{font-size:13px;font-weight:750;cursor:pointer}
+.v95-time-preview textarea{width:100%;height:270px;resize:vertical;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:12px;font-size:14px;line-height:1.8;white-space:pre-wrap}
+.v95-preview-tools{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.v95-preview-tools button{background:var(--blue);color:white;border-radius:8px;padding:9px 12px;font-size:12px}
+.v95-diff{font-size:12px;line-height:1.7;max-height:290px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.v95-diff-line{padding:4px 6px;border-radius:5px;margin:3px 0}
+.v95-diff-line.added{background:rgba(24,160,100,.12)}.v95-diff-line.removed{background:rgba(200,75,60,.1)}
+.v95-time-card footer{border-top:1px solid var(--line);padding:11px 20px;display:flex;gap:10px;justify-content:space-between;align-items:center;color:var(--muted);font-size:11px}
+.v95-time-card footer button{padding:7px 12px;border:1px solid var(--line);border-radius:9px;color:var(--ink)}
+@media(max-width:660px){
+ body.studio-writing .editor-head{padding:6px 12px 5px!important}
+ .v95-status-strip{gap:5px;margin:3px 0 4px;font-size:10px;flex-wrap:nowrap}
+ .v95-status-strip>span{padding:4px 6px;flex:1;min-width:0;word-break:break-word}
+ .v95-time-link{display:none}
+ .v95-mobile-chapters{display:flex;gap:5px;padding:4px 0 0;align-items:center;justify-content:space-between}
+ .v95-mobile-chapters button{min-width:0;flex:1;padding:7px 2px;white-space:nowrap;font-size:11px}
+ body.studio-writing .writer-context,body.studio-writing .editor-head>.kicker{display:none!important}
+ body.studio-writing .editor-head>.edtoolbar{display:flex!important;max-height:42px;overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:none}
+ body.studio-writing.mobile-typing .editor-head>.edtoolbar{display:none!important}
+ body.studio-writing .editor-head>.novel-format-bar{min-height:30px!important;max-height:38px!important}
+ body.studio-writing.mobile-typing .editor-head>.novel-format-bar{display:none!important}
+ body.studio-writing.mobile-typing .v95-mobile-chapters{padding-top:2px}
+ body.studio-writing.mobile-typing .v95-mobile-chapters button[data-v95=hide-keyboard]{display:block}
+ body.studio-writing:not(.mobile-typing) .v95-mobile-chapters button[data-v95=hide-keyboard]{display:none}
+ body.studio-writing.mobile-typing #app{height:var(--v95-vh,100dvh)!important}
+ body.studio-writing.mobile-typing .main{height:calc(var(--v95-vh,100dvh) - 52px)!important}
+ body.studio-writing.mobile-typing .editor-shell{height:calc(var(--v95-vh,100dvh) - 52px)!important}
+ body.studio-writing.mobile-typing .editor-central{height:100%!important}
+ body.studio-writing.mobile-typing .texteditor{padding:12px 17px 16px!important}
+ .v95-time-shade{padding:0;align-items:end}
+ .v95-time-card{width:100%;max-height:94dvh;border-radius:16px 16px 0 0}
+ .v95-time-card header{padding:13px}
+ .v95-time-main{display:flex;flex-direction:column}
+ .v95-time-list{flex:none;max-height:33dvh;border-right:0;border-bottom:1px solid var(--line);padding:9px 13px}
+ .v95-time-list>button{margin:5px 0;padding:8px}
+ .v95-time-preview{min-height:0;flex:1;padding:12px;overflow:auto}
+ .v95-time-card footer{padding:10px 13px}
+}
+
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
@@ -903,6 +968,221 @@ function mojianRecoverDraftOnInit(){
  }
  return recovered;
 }
+
+/* 墨间 V9.5 安心写作：独立状态栏、章节级时光机、手机光标恢复。 */
+const v95Info={local:'ready',cloud:'unknown',localAt:0,cloudAt:0,changeSeq:0,cloudError:'',localError:''};
+let v95TimeQueue=Promise.resolve(),v95HistoryTimer=null,v95CaretTimer=null,v95HistoryOpen=false;
+const v95HistoryLast=new Map();
+const v95UndoByChapter=new Map();let v95UndoApplying=false;
+function v95UndoFor(book,chapter){
+ const key=v95HistoryKey(book.id,chapter.id);
+ let h=v95UndoByChapter.get(key);
+ if(!h){h={undo:[],redo:[],current:chapter.content||'',last:0};v95UndoByChapter.set(key,h)}
+ return h;
+}
+function v95UndoInput(book,chapter,next){
+ if(v95UndoApplying)return;
+ const h=v95UndoFor(book,chapter),now=Date.now();
+ if(h.current!==(chapter.content||'')){h.current=chapter.content||'';h.undo=[];h.redo=[];h.last=0}
+ if(next===h.current)return;
+ if(now-h.last>850||!h.undo.length)h.undo.push(h.current);
+ h.last=now;h.redo=[];h.current=next;
+ // 适当限制长篇的内存占用。
+ while(h.undo.length>24||h.undo.reduce((n,x)=>n+x.length,0)>1600000&&h.undo.length>2)h.undo.shift();
+}
+function v95Undo(direction){
+ if(state?.view!=='editor'||!proj()||!chap())return;
+ const book=proj(),chapter=chap(),h=v95UndoFor(book,chapter),from=direction==='undo'?h.undo:h.redo,
+ to=direction==='undo'?h.redo:h.undo;
+ if(!from.length)return toast(direction==='undo'?'没有可撤销的修改':'没有可重做的修改');
+ const ed=document.getElementById('edBody');if(!ed)return;
+ to.push(ed.value);const text=from.pop();h.current=text;h.last=0;
+ const focused=document.activeElement===ed,caret=ed.selectionStart;
+ v95UndoApplying=true;
+ try{ed.value=text;ed.dispatchEvent(new Event('input',{bubbles:true}));ed.setSelectionRange(Math.min(caret,text.length),Math.min(caret,text.length));}
+ finally{v95UndoApplying=false}
+ if(focused)ed.focus({preventScroll:true});
+}
+
+function v95AccountKey(k){return mojianLocalKey('mojian_v95_'+k)}
+function v95TimeLabel(t){if(!t)return '尚无记录';const d=new Date(t);return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function v95ResetAccountStatus(){
+ v95Info.local='ready';v95Info.cloud='unknown';v95Info.localAt=0;v95Info.cloudAt=0;
+ v95Info.changeSeq=0;v95Info.cloudError='';v95Info.localError='';
+ try{v95Info.cloudAt=Number(localStorage.getItem(v95AccountKey('last_cloud_time')))||0}catch(e){}
+ v95HistoryLast.clear();v95UndoByChapter.clear();clearTimeout(v95HistoryTimer);v95HistoryTimer=null;clearTimeout(v95CaretTimer);
+}
+function v95RenderSaveStatus(){
+ const local=document.getElementById('v95LocalStatus'),cloud=document.getElementById('v95CloudStatus');
+ if(!local||!cloud)return;
+ const lt={saving:'本机保存中…',ready:'本机已保存',error:'本机保存失败'};
+ const ct={unknown:'等待首次云端核对',saving:'云端同步中…',synced:'云端已同步',pending:'等待上传',error:'云端同步失败',offline:'离线，云端未同步'};
+ local.textContent=(lt[v95Info.local]||'本机待检查')+(v95Info.localAt?' · '+v95TimeLabel(v95Info.localAt):'');
+ cloud.textContent=(ct[v95Info.cloud]||'云端待检查')+(v95Info.cloudAt?' · 上次成功 '+v95TimeLabel(v95Info.cloudAt):'');
+ local.dataset.state=v95Info.local;cloud.dataset.state=v95Info.cloud;
+ local.title=v95Info.localError||'本机浏览器保存状态';
+ cloud.title=v95Info.cloudError||'云端同步状态；不会因为本机已保存就宣称上传成功';
+}
+function v95OnDirty(){v95Info.changeSeq++;v95Info.local='saving';v95Info.cloud=navigator.onLine===false?'offline':'pending';v95Info.cloudError='';v95RenderSaveStatus();}
+function v95OnLocalSaved(seq){
+ v95Info.localAt=Date.now();v95Info.localError='';
+ if(seq===v95Info.changeSeq)v95Info.local='ready';
+ v95RenderSaveStatus();
+}
+function v95OnLocalError(error){v95Info.local='error';v95Info.localError=String(error?.message||error);v95RenderSaveStatus();}
+function v95OnCloudStart(){v95Info.cloud='saving';v95RenderSaveStatus();}
+function v95OnCloudResult(isSynced,error=''){
+ if(error){v95Info.cloud=navigator.onLine===false?'offline':'error';v95Info.cloudError=String(error);}
+ else if(isSynced){v95Info.cloud='synced';v95Info.cloudAt=Date.now();v95Info.cloudError='';
+  try{localStorage.setItem(v95AccountKey('last_cloud_time'),String(v95Info.cloudAt))}catch(e){}
+ }else{v95Info.cloud='pending';}
+ v95RenderSaveStatus();
+}
+function v95HistoryKey(bookId,chapterId){return v95AccountKey('chapter_history__'+bookId+'__'+chapterId)}
+async function v95HistoryRead(key){
+ let raw=null;
+ try{raw=db?await dbget(key):localStorage.getItem(key)}catch(e){raw=localStorage.getItem(key)}
+ try{const result=JSON.parse(raw||'[]');return Array.isArray(result)?result:[]}catch(e){return []}
+}
+async function v95HistoryWrite(key,history){
+ const raw=JSON.stringify(history);
+ if(db)await dbput(key,raw);
+ else localStorage.setItem(key,raw);
+}
+function v95TrimHistory(h){
+ const now=Date.now(),out=[];let count=0;
+ for(const item of h){
+  if(!item||typeof item.content!=='string'||now-item.at>60*86400000)continue;
+  const len=item.content.length;
+  if(out.length>=30||(count+len>3600000 && out.length>=2))continue;
+  out.push(item);count+=len;
+ }
+ return out;
+}
+function v95Snapshot(reason='自动定时',forced=false){
+ if(!mojianAccount||!state||state.view!=='editor')return Promise.resolve(false);
+ mojianFlushVisibleEditorDraft();const p=proj(),c=chap();if(!p||!c||!c.content)return Promise.resolve(false);
+ const key=v95HistoryKey(p.id,c.id),stamp=Date.now(),last=v95HistoryLast.get(key)||0;
+ if(!forced&&stamp-last<120000)return Promise.resolve(false);
+ const item={id:'v95_'+stamp+'_'+Math.random().toString(36).slice(2,7),at:stamp,reason,
+  bookId:p.id,chapterId:c.id,title:c.title||'',content:c.content};
+ v95TimeQueue=v95TimeQueue.catch(()=>{}).then(async()=>{
+  const history=await v95HistoryRead(key);
+  if(history[0]?.content===item.content){v95HistoryLast.set(key,stamp);return false}
+  history.unshift(item);
+  // 永久删除后的旧定时任务不得留下新的历史稿。
+  if(!state?.projects?.some(b=>b.id===item.bookId&&b.chapters?.some(c=>c.id===item.chapterId))||state.bookOperations?.[item.bookId]?.kind==='purge')return false;
+  await v95HistoryWrite(key,v95TrimHistory(history));
+  v95HistoryLast.set(key,stamp);return true;
+ }).catch(err=>{console.warn('草稿时光机快照未写入',err);if(forced)toast('时光机保存失败，请先导出备份');return false});
+ return v95TimeQueue;
+}
+function v95ScheduleHistory(){
+ if(v95HistoryTimer)return;
+ v95HistoryTimer=setTimeout(()=>{
+  v95HistoryTimer=null;v95Snapshot('自动定时');
+  // 连续打字不暂停时也要每10秒检查一次是否到达两分钟快照间隔。
+  if(state?.view==='editor'&&document.activeElement?.id==='edBody')v95ScheduleHistory();
+ },(proj()&&chap()&&!v95HistoryLast.has(v95HistoryKey(proj().id,chap().id)))?2500:10000);
+}
+function v95HistoryDiff(a,b){
+ const old=String(a||'').replace(/\r/g,'').split('\n'),cur=String(b||'').replace(/\r/g,'').split('\n');
+ const max=200,A=old.slice(0,max),B=cur.slice(0,max),n=A.length,m=B.length;
+ const cells=Array.from({length:n+1},()=>new Uint16Array(m+1));
+ for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
+  cells[i][j]=A[i]===B[j]?cells[i+1][j+1]+1:Math.max(cells[i+1][j],cells[i][j+1]);
+ let i=0,j=0;const changes=[];
+ while(i<n||j<m){
+  if(i<n&&j<m&&A[i]===B[j]){i++;j++;continue}
+  if(i<n&&(j===m||cells[i+1][j]>=cells[i][j+1])){changes.push({sign:'−',text:A[i++]});}
+  else if(j<m){changes.push({sign:'+',text:B[j++]});}
+ }
+ const trimmed=changes.slice(0,100);
+ return `<p class="v95-muted">按段落对比 · ${changes.filter(x=>x.sign==='+').length} 段新增 · ${changes.filter(x=>x.sign==='−').length} 段删除${old.length>max||cur.length>max?' · 长文仅对比前200段':''}</p>`+
+ (trimmed.length?trimmed.map(x=>`<div class="v95-diff-line ${x.sign==='+'?'added':'removed'}"><b>${x.sign}</b> ${escapeHTML(x.text||'（空行）')}</div>`).join(''):'<p class="v95-muted">段落内容没有变化。</p>')+
+ (changes.length>100?'<p class="v95-muted">差异较多，已显示前100处。</p>':'');
+}
+async function v95OpenTimeMachine(){
+ if(state.view!=='editor'||!proj()||!chap())return toast('请先进入一个章节');
+ mojianFlushVisibleEditorDraft();await save();
+ const p=proj(),c=chap(),bid=p.id,cid=c.id;
+ const key=v95HistoryKey(bid,cid);const history=await v95HistoryRead(key);
+ document.getElementById('v95TimeShade')?.remove();
+ const shade=document.createElement('div');shade.id='v95TimeShade';shade.className='v95-time-shade';
+ shade.innerHTML=`<section class="v95-time-card" role="dialog" aria-modal="true" aria-label="草稿时光机"><header><div><b>草稿时光机</b><p>《${escapeHTML(p.title)}》 · ${escapeHTML(c.title)} · 只在当前设备和账号保存</p></div><button type="button" data-v95="close-time" aria-label="关闭">×</button></header><div class="v95-time-main"><div class="v95-time-list"><p class="v95-muted">最多保留30份、60天；每约2分钟的活跃修改保留一份，可手动保留。</p><button class="v95-time-new" data-v95="save-version">＋ 保存当前草稿快照</button>${history.length?history.map(h=>`<button type="button" data-v95-version="${escapeHTML(h.id)}"><b>${escapeHTML(v95TimeLabel(h.at))}</b><small>${escapeHTML(h.reason)} · ${fmt(words(h.content))} 字</small></button>`).join(''):'<p class="v95-muted">暂时没有历史快照。可以先手动保存一份。</p>'}</div><div class="v95-time-preview"><div id="v95TimeReview"><p class="v95-muted">选择左侧一个时间点，可以预览旧稿并查看和当前正文的差异。恢复前会自动保存现稿。</p></div></div></div><footer><span>提示：这里的历史只保存在当前浏览器，不会上传云端。</span><button type="button" data-v95="close-time">关闭</button></footer></section>`;
+ document.body.appendChild(shade);v95HistoryOpen=true;
+ shade.addEventListener('click',async e=>{
+  if(e.target===shade||e.target.closest('[data-v95="close-time"]')){shade.remove();v95HistoryOpen=false;return}
+  if(e.target.closest('[data-v95="save-version"]')){
+   await v95Snapshot('手动保存',true);shade.remove();v95HistoryOpen=false;v95OpenTimeMachine();return;
+  }
+  const btn=e.target.closest('[data-v95-version]');if(btn){
+   const found=history.find(h=>h.id===btn.dataset.v95Version);if(!found)return;
+   shade.querySelectorAll('[data-v95-version]').forEach(b=>b.classList.toggle('active',b===btn));
+   const review=shade.querySelector('#v95TimeReview');
+   review.innerHTML=`<div class="v95-preview-tools"><b>${escapeHTML(v95TimeLabel(found.at))} · ${fmt(words(found.content))} 字</b><button type="button" data-v95-restore="${escapeHTML(found.id)}">恢复这份旧稿</button></div><details open><summary>与当前正文的差异</summary><div class="v95-diff">${v95HistoryDiff(found.content,chap()?.content||'')}</div></details><details><summary>查看完整历史正文（只读）</summary><textarea readonly spellcheck="false">${escapeHTML(found.content)}</textarea></details>`;
+   return;
+  }
+  const restore=e.target.closest('[data-v95-restore]');if(!restore)return;
+  const old=history.find(h=>h.id===restore.dataset.v95Restore);
+  if(!old||proj()?.id!==bid||chap()?.id!==cid)return toast('章节已切换，请重新打开时光机');
+  if(!confirm(`确认恢复 ${v95TimeLabel(old.at)} 的草稿吗？\n当前正文会先备份为恢复点，然后替换为历史内容。`))return;
+  const backup=await v95Snapshot('恢复前自动备份',true);
+  if(backup===false && (chap().content||'')!==old.content){toast('恢复前备份未成功，已取消恢复，避免丢失现稿');return}
+  chap().content=old.content;chap().updatedAt=Date.now();proj().updatedAt=Date.now();
+  const liveEditor=document.getElementById('edBody');if(liveEditor)liveEditor.value=old.content;
+  const undo=v95UndoFor(proj(),chap());undo.current=old.content;undo.undo=[];undo.redo=[];undo.last=0;
+  mojianGuardDraft(proj(),chap());mark();await save();shade.remove();v95HistoryOpen=false;render();
+  v93ScheduleCloudSync(250);toast('已恢复历史草稿，恢复前的正文也已保留');
+ });
+}
+function v95CaretKey(){const p=proj(),c=chap();return p&&c?v95AccountKey('caret__'+p.id+'__'+c.id):null}
+function v95StoreCaret(){
+ if(state?.view!=='editor')return;const editor=document.getElementById('edBody'),key=v95CaretKey();if(!editor||!key)return;
+ try{localStorage.setItem(key,JSON.stringify({start:editor.selectionStart,end:editor.selectionEnd,scroll:editor.scrollTop,at:Date.now()}))}catch(e){}
+}
+function v95RestoreCaret(){
+ const editor=document.getElementById('edBody'),key=v95CaretKey();if(!editor||!key)return;
+ try{const pos=JSON.parse(localStorage.getItem(key)||'null');if(!pos)return;
+  const n=editor.value.length;editor.setSelectionRange(Math.min(n,pos.start||0),Math.min(n,pos.end||pos.start||0));
+  editor.scrollTop=Math.max(0,Number(pos.scroll)||0);
+ }catch(e){}
+}
+function v95JumpChapter(direction){
+ if(state?.view!=='editor'||!proj())return;
+ const p=proj(),i=p.chapters.findIndex(c=>c.id===state.activeChapterId),target=p.chapters[i+direction];
+ if(!target)return toast(direction>0?'已经是最后一章':'已经是第一章');
+ v95StoreCaret();mojianFlushVisibleEditorDraft();save().catch(console.warn);
+ state.activeChapterId=target.id;state.activeWorldId=target.worldId;setView('editor');
+}
+function v95UpdateKeyboardHeight(){
+ if(!matchMedia('(max-width:660px)').matches)return;
+ const vp=window.visualViewport;
+ // Prefer the actual visual viewport after iOS keyboard resize; do not force focus or scroll.
+ const available=vp?Math.min(window.innerHeight,vp.height):window.innerHeight;
+ document.documentElement.style.setProperty('--v95-vh',Math.max(200,available)+'px');
+}
+function v95EditorReady(){
+ v95RenderSaveStatus();v95RestoreCaret();v95UpdateKeyboardHeight();
+ if(proj()&&chap())v95UndoFor(proj(),chap());
+ const ed=document.getElementById('edBody');if(!ed)return;
+ for(const ev of ['click','keyup','mouseup','input','scroll'])ed.addEventListener(ev,()=>{clearTimeout(v95CaretTimer);v95CaretTimer=setTimeout(v95StoreCaret,280)});
+}
+window.visualViewport?.addEventListener('resize',v95UpdateKeyboardHeight);
+window.visualViewport?.addEventListener('scroll',v95UpdateKeyboardHeight);
+window.addEventListener('pagehide',()=>{v95StoreCaret();mojianFlushVisibleEditorDraft();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){v95StoreCaret();mojianFlushVisibleEditorDraft();if(state?.view==='editor')v95Snapshot('离开页面前自动保存');}});
+document.addEventListener('click',e=>{
+ const hit=e.target.closest('[data-v95]');if(!hit||!!hit.closest('#v95TimeShade'))return;
+ if(hit.dataset.v95==='time-machine')v95OpenTimeMachine().catch(err=>toast('无法读取历史草稿：'+err.message));
+ else if(hit.dataset.v95==='undo')v95Undo('undo');
+ else if(hit.dataset.v95==='redo')v95Undo('redo');
+ else if(hit.dataset.v95==='prev')v95JumpChapter(-1);
+ else if(hit.dataset.v95==='next')v95JumpChapter(1);
+ else if(hit.dataset.v95==='hide-keyboard'){document.getElementById('edBody')?.blur()}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&v95HistoryOpen){document.getElementById('v95TimeShade')?.remove();v95HistoryOpen=false;}});
+
 async function init(){try{db=await database()}catch(e){db=null}let raw=null,legacy=null;try{raw=db?await dbget(mojianLocalKey('state_v2')):localStorage.getItem(mojianLocalKey('mojian_writer_v2'));
  const alternate=localStorage.getItem(mojianLocalKey('mojian_writer_v2'));
  if(alternate){try{const a=JSON.parse(alternate),b=raw?JSON.parse(raw):null;
@@ -910,18 +1190,19 @@ async function init(){try{db=await database()}catch(e){db=null}let raw=null,lega
  }catch(e){console.warn('备用稿读取失败',e)}}
  if(!raw&&(!mojianAccount||mojianAccount.role==='admin'))legacy=db?await dbget('state'):localStorage.getItem('mojian_writer_v1')}catch(e){}try{if(raw){state=JSON.parse(raw)}else if(legacy){const old=JSON.parse(legacy);state=defaults();state.projects=old.projects||[];state.activeProjectId=old.activeProjectId;state.activeWorldId=old.activeWorldId;state.activeChapterId=old.activeChapterId;state.settings={...state.settings,...(old.settings||{})};state.view='library';}else state=defaults();if(!state||!Array.isArray(state.projects))throw Error('bad');state.settings={...defaults().settings,...state.settings}}catch(e){state=defaults()}consistent();mojianGuardRecoveryCount=mojianRecoverDraftOnInit();if(!state.workspaceV77Initialized){state.workspaceV77Initialized=true;state.view='library';}applySettings();render();setStatus(mojianGuardRecoveryCount?'已从本机保护区恢复 '+mojianGuardRecoveryCount+' 份正文草稿':raw?'已载入本机稿件':legacy?'已载入旧版作品':'本机自动保存',true);if(!raw||mojianGuardRecoveryCount)save().catch(console.warn);}
 function setStatus(message,good=false){const f=$('#focusSave');if(f)f.textContent=message;const n=$('#saveStatus');if(n){n.className='status'+(good?' good':'');n.innerHTML=`${ico(good?'check':'clock','sm')} ${escapeHTML(message)}`}}
-function mark(){setStatus('正在保存本机草稿…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>{save().catch(err=>console.warn('墨间本机保存失败',err))},Math.max(200,Math.min(5000,+state.settings.autosave||400)));if(typeof v93ScheduleCloudSync==='function')v93ScheduleCloudSync(1500)}
+function mark(){v95OnDirty();setStatus('正在保存本机草稿…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>{save().catch(err=>console.warn('墨间本机保存失败',err))},Math.max(200,Math.min(5000,+state.settings.autosave||400)));if(typeof v93ScheduleCloudSync==='function')v93ScheduleCloudSync(1500)}
 function save(){
  clearTimeout(saveTimer);
  mojianFlushVisibleEditorDraft(); // 防止云同步更换数据对象后，输入框仍指向旧的章节对象
  state.lastSaved=Date.now();
+ const v95CapturedSeq=v95Info.changeSeq;
  const serialized=JSON.stringify(state);
  savePromise=savePromise.catch(()=>{}).then(async()=>{
   try{
    if(db){try{await dbput(mojianLocalKey('state_v2'),serialized)}catch(dbError){localStorage.setItem(mojianLocalKey('mojian_writer_v2'),serialized);console.warn('IndexedDB 故障，已切换浏览器本地备用存储',dbError)}}
    else localStorage.setItem(mojianLocalKey('mojian_writer_v2'),serialized);
-   setStatus('正文已保存到本机',true);
-  }catch(e){setStatus('本机保存失败！请备份草稿');toast('本机存储异常，草稿保护区可能仍有副本');throw e}
+   v95OnLocalSaved(v95CapturedSeq);if(v95Info.local==='ready')setStatus('正文已保存到本机',true);
+  }catch(e){v95OnLocalError(e);setStatus('本机保存失败！请备份草稿');toast('本机存储异常，草稿保护区可能仍有副本');throw e}
  });
  return savePromise;
 }
@@ -1006,14 +1287,14 @@ function showDashboard(){const p=proj();if(!p)return setView('library');const ws
 
 function showEditor(){const p=proj();if(!p)return setView('library');if(!p.chapters.length){const w=p.worlds[0];p.chapters.push(freshChapter(w.id,1));state.activeChapterId=p.chapters[0].id;mark()}const c=chap(),w=getWorld(p,c.worldId)||wld();$('#main').innerHTML=`<div class="editor-shell"><div class="editor-tree"><div class="editor-sidehead"><span>世界 / 章节</span><button class="iconbtn" data-action="create-world" title="新建世界">${ico('plus','sm')}</button></div><div class="studio-context"><button data-action="dashboard">${ico('home','sm')} 作品主页</button><button data-action="nav-toggle">${ico('panel','sm')} 全部功能</button></div><div class="filters" style="margin:0 5px 14px"><input class="input" id="treeSearch" placeholder="搜索章节…" style="padding:9px 10px"></div><div id="editorTree">${editorTree()}</div></div><div class="editor-central">
  <div class="focus-hud" id="focusHud"><span class="focus-name" title="${escapeHTML(p.title)}">${escapeHTML(p.title)}</span><span class="focus-meta" id="focusCount">${fmt(words(c.content))} 字</span><span id="focusSave" class="focus-meta">自动保存</span><button class="btn small primary" data-action="focus" title="退出满屏专注模式（Esc）">${ico('focus','sm')}退出专注</button></div>
- <div class="editor-head"><div class="writer-context"><button data-nav="outline">故事大纲</button><span>›</span><button data-story-map="focus-chapter">关系图定位本章</button><span class="writer-context-save">独立章节 · 自动保存</span></div><div class="kicker">${escapeHTML(p.title)} / ${escapeHTML(w.title)}</div><input id="edTitle" class="ed-title" value="${escapeHTML(c.title)}" maxlength="150" placeholder="输入章节标题"><div class="ed-meta"><span id="edCount">${fmt(words(c.content))} 字</span>　·　${escapeHTML(c.status)}　·　最后修改 ${when(c.updatedAt)}</div><div class="edtoolbar writer-toolbar-v82"><button class="btn small" data-action="create-chapter">${ico('plus','sm')} 新章</button><button class="btn small" data-writer-plan="toggle">${ico('book','sm')} 本章计划</button><button class="btn small" data-nav="sceneStudio">场景</button><button class="btn small" data-action="snapshot">存版本</button><button class="btn small" data-action="reading">阅读校稿</button><button class="btn small primary" data-action="focus">${ico('focus','sm')} 专注</button><button class="btn small studio-ai-compact" data-action="toggle-assistant">AI 助手</button><details class="writer-extra-menu"><summary>更多工具 <span aria-hidden="true">⌄</span></summary><div class="writer-menu-panel"><b class="menu-title">正文操作</b><button data-action="snapshot">保存当前版本</button><button data-nav="revision">AI 校稿对照</button><button data-nav="memory">全书记忆中心</button><button data-action="compare-versions">历史版本对照</button><button data-action="versions">全部历史版本</button><button data-action="chapter-options">管理章节</button><button data-action="find-replace">本章查找替换</button><button data-action="insert-divider">插入场景分隔线</button><button data-action="format-toolbox">小说排版工具</button><button data-v92="selected-toolbar">选段编辑工具</button><button data-nav="linkCenter">正文·人物·伏笔联动</button><button data-nav="chapterBatch">章节批量管理</button><b class="menu-title">视图和资料</b><button data-action="reader">本章阅读预览</button><button data-action="reference">对照世界大纲</button><button data-action="writer-normal">常规布局</button><button data-action="writer-wide">宽屏布局</button><button data-action="writer-max">铺满布局</button><button data-action="mindmap">故事关系网</button><button data-action="settings">写作偏好设置</button><button data-action="api-config">多个 AI 接口</button><button data-action="toggle-assistant">显示 / 隐藏 AI 助手</button></div></details></div><div class="novel-format-bar" id="novelFormatBar" aria-label="小说排版工具"><span class="format-label">✎ 小说排版</span><button class="format-chip" id="autoIndentButton" data-action="format-indent-toggle" title="开启后按回车，自动输入指定数量的全角空格">自动首行缩进</button><label class="format-mini-label" for="formatIndentCount">缩进</label><select id="formatIndentCount" class="format-compact" title="每段实际写入几个全角空格"><option value="0">0 字</option><option value="1">1 字</option><option value="2">2 字</option><option value="3">3 字</option><option value="4">4 字</option></select><button class="format-chip" id="paragraphGapButton" data-action="format-gap-toggle" title="回车时在段落间留一个空行">段间空行</button><span class="format-spacer"></span><button class="format-chip" data-action="format-new-paragraph" title="插入新段落（Alt+Enter）">↵ 新段落</button><button class="format-chip" data-action="format-dialogue" title="插入中文双引号">“” 对话</button><button class="format-chip format-strong" data-action="format-toolbox">排版工具 <span aria-hidden="true">⌄</span></button></div></div>
+ <div class="editor-head"><div class="writer-context"><button data-nav="outline">故事大纲</button><span>›</span><button data-story-map="focus-chapter">关系图定位本章</button><span class="writer-context-save">独立章节 · 自动保存</span></div><div class="kicker">${escapeHTML(p.title)} / ${escapeHTML(w.title)}</div><input id="edTitle" class="ed-title" value="${escapeHTML(c.title)}" maxlength="150" placeholder="输入章节标题"><div class="ed-meta"><span id="edCount">${fmt(words(c.content))} 字</span>　·　${escapeHTML(c.status)}　·　最后修改 ${when(c.updatedAt)}</div><div class="v95-status-strip" aria-live="polite"><span id="v95LocalStatus" data-state="ready">本机状态待确认</span><span id="v95CloudStatus" data-state="unknown">云端等待核对</span><button class="v95-time-link" data-v95="time-machine" title="查看本章草稿历史">↶ 草稿时光机</button></div><div class="v95-mobile-chapters"><button type="button" data-v95="prev">‹ 上章</button><button type="button" data-v95="undo">撤销</button><button type="button" data-v95="redo">重做</button><button type="button" data-v95="time-machine">时光机</button><button type="button" data-v95="next">下章 ›</button><button type="button" data-v95="hide-keyboard" title="收起手机键盘">收起键盘</button></div><div class="edtoolbar writer-toolbar-v82"><button class="btn small" data-action="create-chapter">${ico('plus','sm')} 新章</button><button class="btn small" data-writer-plan="toggle">${ico('book','sm')} 本章计划</button><button class="btn small" data-nav="sceneStudio">场景</button><button class="btn small" data-action="snapshot">存版本</button><button class="btn small" data-action="reading">阅读校稿</button><button class="btn small primary" data-action="focus">${ico('focus','sm')} 专注</button><button class="btn small studio-ai-compact" data-action="toggle-assistant">AI 助手</button><details class="writer-extra-menu"><summary>更多工具 <span aria-hidden="true">⌄</span></summary><div class="writer-menu-panel"><b class="menu-title">正文操作</b><button data-action="snapshot">保存当前版本</button><button data-nav="revision">AI 校稿对照</button><button data-nav="memory">全书记忆中心</button><button data-action="compare-versions">历史版本对照</button><button data-action="versions">全部历史版本</button><button data-action="chapter-options">管理章节</button><button data-action="find-replace">本章查找替换</button><button data-action="insert-divider">插入场景分隔线</button><button data-action="format-toolbox">小说排版工具</button><button data-v92="selected-toolbar">选段编辑工具</button><button data-nav="linkCenter">正文·人物·伏笔联动</button><button data-nav="chapterBatch">章节批量管理</button><b class="menu-title">视图和资料</b><button data-action="reader">本章阅读预览</button><button data-action="reference">对照世界大纲</button><button data-action="writer-normal">常规布局</button><button data-action="writer-wide">宽屏布局</button><button data-action="writer-max">铺满布局</button><button data-action="mindmap">故事关系网</button><button data-action="settings">写作偏好设置</button><button data-action="api-config">多个 AI 接口</button><button data-action="toggle-assistant">显示 / 隐藏 AI 助手</button></div></details></div><div class="novel-format-bar" id="novelFormatBar" aria-label="小说排版工具"><span class="format-label">✎ 小说排版</span><button class="format-chip" id="autoIndentButton" data-action="format-indent-toggle" title="开启后按回车，自动输入指定数量的全角空格">自动首行缩进</button><label class="format-mini-label" for="formatIndentCount">缩进</label><select id="formatIndentCount" class="format-compact" title="每段实际写入几个全角空格"><option value="0">0 字</option><option value="1">1 字</option><option value="2">2 字</option><option value="3">3 字</option><option value="4">4 字</option></select><button class="format-chip" id="paragraphGapButton" data-action="format-gap-toggle" title="回车时在段落间留一个空行">段间空行</button><span class="format-spacer"></span><button class="format-chip" data-action="format-new-paragraph" title="插入新段落（Alt+Enter）">↵ 新段落</button><button class="format-chip" data-action="format-dialogue" title="插入中文双引号">“” 对话</button><button class="format-chip format-strong" data-action="format-toolbox">排版工具 <span aria-hidden="true">⌄</span></button></div></div>
  <section class="writer-plan-panel" id="writerPlanPanel" ${p.workspace.writerPlanOpen?'':'hidden'}><div class="writer-plan-heading"><div><strong>本章写作计划</strong><span class="muted">只属于《${escapeHTML(p.title)}》的这一章，改动立即保存</span></div><button class="btn small" data-writer-plan="toggle">收起</button></div><div class="writer-plan-content"><textarea id="edSynopsis" class="outline-input" placeholder="这一章的目标、情绪、冲突、转折，以及结尾要留下的问题……">${escapeHTML(c.synopsis||'')}</textarea><div class="writer-plan-controls"><label>剧情阶段 <select id="edArcStage"><option value="">暂不归类</option>${outlineActs.map(([k,l])=>`<option value="${k}" ${c.arcStage===k?'selected':''}>${l}</option>`).join('')}</select></label><label>章节进度 <select id="edStatus">${['草稿','构思中','待修改','已完成','已定稿','已发布'].map(k=>`<option ${c.status===k?'selected':''}>${k}</option>`).join('')}</select></label><div class="writer-plan-links"><button data-nav="scenes">剧情卡片</button><button data-nav="outline">编辑世界大纲</button><button data-story-map="focus-chapter">关系网中定位</button></div></div></div></section><div class="v92-selected-tools" id="v92SelectedTools" hidden><span id="v92SelectionInfo">选中段落</span><button data-v92="selected-link">关联人物/伏笔</button><button data-v92="selected-note">批注</button><button data-v92="selected-backup">备用稿</button><button data-v92="selected-polish">AI 润色</button><button data-v92="selected-expand">AI 扩写</button><button data-v92="selected-close">收起</button></div><div class="ed-scroll"><div class="sheet"><textarea id="edBody" class="texteditor" aria-label="小说正文编辑器" spellcheck="${!!state.settings.spellcheck}" placeholder="从这里开始，写下你的故事……">${escapeHTML(c.content)}</textarea><article class="reader-pane" id="readPreview" aria-label="本章阅读预览"></article></div></div><div class="ed-bottom"><span id="bottomCount">本章 ${fmt(words(c.content))} 字</span><span id="caretStats" class="caret-stats">第 1 段 · 第 1 行 · 第 1 列</span><span class="hidephone">目标 ${fmt(state.settings.chapterGoal)} 字</span><span id="chapterProgress" class="grow hidephone">完成 ${Math.min(100,Math.round(words(c.content)/Math.max(1,state.settings.chapterGoal)*100))}%</span><span class="hidephone">Ctrl/⌘ + S 保存 · Esc 退出专注</span><button data-action="outline" class="linky">世界大纲</button></div>
  <aside class="reference-pane" id="referencePane"><div class="bigrow"><strong>写作参考</strong><button class="iconbtn" data-action="reference" title="关闭参考">${ico('focus','sm')}</button></div><div class="r-title">章节梗概</div><p id="referenceSynopsis">${escapeHTML(c.synopsis||'本章暂无梗概；可以在常规模式的右侧补充。')}</p><div class="r-title">世界简介</div><p>${escapeHTML(w.intro||'暂无世界简介')}</p><div class="r-title">故事开局 / 推进</div><p>${escapeHTML([w.opening,w.development].filter(Boolean).join('\n\n')||'尚未填写')}</p><button class="btn small" data-action="outline">打开完整大纲</button></aside>
  </div><div class="ed-aside">${assistantAside()}</div></div>`;
  document.body.classList.toggle('reader-mode',editorReading);document.body.classList.toggle('reference-mode',editorReference);
  if(editorReading)refreshReader();
- $('#edBody').addEventListener('input',e=>{const newCount=words(e.target.value),oldCount=words(c.content),delta=Math.max(0,newCount-oldCount);c.content=e.target.value;c.updatedAt=Date.now();p.updatedAt=c.updatedAt;mojianGuardDraft(p,c);recordWords(p,delta);$('#edCount').textContent=fmt(newCount)+' 字';$('#bottomCount').textContent='本章 '+fmt(newCount)+' 字';if($('#focusCount'))$('#focusCount').textContent=fmt(newCount)+' 字';$('#chapterProgress')&&($('#chapterProgress').textContent='完成 '+Math.min(100,Math.round(newCount/Math.max(1,state.settings.chapterGoal)*100))+'%');/* 输入不触发缩放、不改变编辑器尺寸，也不强制重定位滚动条 */mark()});
- $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();restoreChapterMenuScroll('book:'+p.id);
+ $('#edBody').addEventListener('input',e=>{const newCount=words(e.target.value),oldCount=words(c.content),delta=Math.max(0,newCount-oldCount);v95UndoInput(p,c,e.target.value);c.content=e.target.value;c.updatedAt=Date.now();p.updatedAt=c.updatedAt;mojianGuardDraft(p,c);v95ScheduleHistory();recordWords(p,delta);$('#edCount').textContent=fmt(newCount)+' 字';$('#bottomCount').textContent='本章 '+fmt(newCount)+' 字';if($('#focusCount'))$('#focusCount').textContent=fmt(newCount)+' 字';$('#chapterProgress')&&($('#chapterProgress').textContent='完成 '+Math.min(100,Math.round(newCount/Math.max(1,state.settings.chapterGoal)*100))+'%');/* 输入不触发缩放、不改变编辑器尺寸，也不强制重定位滚动条 */mark()});
+ $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();restoreChapterMenuScroll('book:'+p.id);v95EditorReady();
 }
 function refreshReader(){const c=chap(),host=$('#readPreview');if(!host||!c)return;const paras=c.content.replace(/\r\n?/g,'\n').split('\n').map(x=>`<p style="${/^[\u3000 \t]+/.test(x)?'text-indent:0':''}">${escapeHTML(x)||'&nbsp;'}</p>`).join('');host.innerHTML=`<h2>${escapeHTML(c.title||'未命名章节')}</h2>${paras||'<p class="reader-empty">这章还没有正文。点击“阅读”即可切回写作。</p>'}`;host.scrollTop=0}
 function toggleReader(){if(state.view!=='editor')return;if(editorFocus)exitEditorFocus();editorReading=!editorReading;document.body.classList.toggle('reader-mode',editorReading);const b=$('#readerBtn');if(b){b.classList.toggle('mode-on',editorReading);b.setAttribute('aria-pressed',String(editorReading))}if(editorReading){refreshReader();toast('阅读预览：原文不会被修改')}else{$('#edBody')?.focus({preventScroll:true});toast('已返回写作')}}
@@ -1423,7 +1704,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-ai-load]')
 document.addEventListener('click',e=>{const b=e.target.closest('[data-writer-plan]');if(!b||!proj())return;const panel=$('#writerPlanPanel');if(!panel)return;const show=panel.hidden;panel.hidden=!show;proj().workspace.writerPlanOpen=show;mark();const ed=$('#edSynopsis');if(show&&ed&&!matchMedia('(pointer:coarse)').matches)ed.focus({preventScroll:true});});
 document.addEventListener('input',e=>{const el=e.target;if(el.hasAttribute('data-outline-field')){const p=proj(),w=p?.worlds.find(x=>x.id===el.dataset.outlineWorld);if(!w)return;w[el.dataset.outlineField]=el.value;w.updatedAt=Date.now();p.updatedAt=Date.now();mark()}else if(el.dataset.planField==='synopsis'){const c=proj()?.chapters.find(x=>x.id===el.dataset.planChapter);if(!c)return;c.synopsis=el.value;c.updatedAt=Date.now();mark()}});
 document.addEventListener('change',e=>{const el=e.target;if(!['arcStage','status'].includes(el.dataset.planField))return;const c=proj()?.chapters.find(x=>x.id===el.dataset.planChapter);if(!c)return;c[el.dataset.planField]=el.value;c.updatedAt=Date.now();mark();});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-nav],[data-openproject],[data-workbook],[data-chapter],[data-world],[data-outline],[data-addchapter],[data-edit],[data-delete],[data-toggle-task],[data-move-scene],[data-version],[data-searchgo],[data-restore],[data-purge]');if(!b)return;if(b.dataset.action){if(b.closest('.nav')&&b.dataset.action!=='nav-toggle')$('#sidebar').classList.remove('mobileopen');const menu=b.closest('.mobile-editor-menu');if(menu)menu.removeAttribute('open');action(b.dataset.action,b.dataset.id);return}if(b.dataset.nav){$('#sidebar').classList.remove('mobileopen');setView(b.dataset.nav);return}if(b.dataset.openproject){selectProject(b.dataset.openproject,false);return}if(b.dataset.workbook){closeModal();selectProject(b.dataset.workbook,true);return}if(b.dataset.chapter){const c=proj()?.chapters.find(x=>x.id===b.dataset.chapter);if(!c)return;state.activeChapterId=c.id;state.activeWorldId=c.worldId;setView('editor');return}if(b.dataset.outline){state.activeWorldId=b.dataset.outline;setView('outline');return}if(b.dataset.world){state.activeWorldId=b.dataset.world;update();return}if(b.dataset.addchapter){addChapter(b.dataset.addchapter);return}if(b.dataset.edit){const [type,id]=b.dataset.edit.split(':');({character:editCharacter,scene:editScene,relation:editRelation,event:editEvent,lore:editLore,note:editNote,task:editTask}[type])?.(id);return}if(b.dataset.delete){const [type,id]=b.dataset.delete.split(':');deleteEntity(type,id);return}if(b.dataset.toggleTask){const x=proj().tasks.find(x=>x.id===b.dataset.toggleTask);if(x){x.done=!x.done;update()}return}if(b.dataset.moveScene){const x=proj().scenes.find(x=>x.id===b.dataset.moveScene);if(x){const arr=['待构思','准备写','已完成'];x.status=arr[(arr.indexOf(x.status)+1)%3];update()}return}if(b.dataset.version){const c=chap(),v=c?.versions[+b.dataset.version];if(v&&confirm('恢复这个历史版本？当前稿件会先保留为新版本。')){snapshot(false);c.content=v.content;c.title=v.title;c.updatedAt=Date.now();closeModal();update('章节历史版本已恢复')}return}if(b.dataset.searchgo){openSearchItem(b.dataset.searchgo);return}if(b.dataset.restore){let x=state.trash.find(x=>x.id===b.dataset.restore);if(x){state.trash=state.trash.filter(p=>p!==x);delete x.deletedAt;if(state.projects.some(p=>p.id===x.id))x.id=uid();state.projects.push(x);v93RecordBookOp(x.id,'restore');update('作品已恢复')}return}if(b.dataset.purge){let x=state.trash.find(p=>p.id===b.dataset.purge);if(x&&confirm(`永久删除「${x.title}」？无法撤销。`)){v93PurgeBooks([x.id]);update('已永久删除，并通知云端删除')}return}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-action],[data-nav],[data-openproject],[data-workbook],[data-chapter],[data-world],[data-outline],[data-addchapter],[data-edit],[data-delete],[data-toggle-task],[data-move-scene],[data-version],[data-searchgo],[data-restore],[data-purge]');if(!b)return;if(b.dataset.action){if(b.closest('.nav')&&b.dataset.action!=='nav-toggle')$('#sidebar').classList.remove('mobileopen');const menu=b.closest('.mobile-editor-menu');if(menu)menu.removeAttribute('open');action(b.dataset.action,b.dataset.id);return}if(b.dataset.nav){$('#sidebar').classList.remove('mobileopen');setView(b.dataset.nav);return}if(b.dataset.openproject){selectProject(b.dataset.openproject,false);return}if(b.dataset.workbook){closeModal();selectProject(b.dataset.workbook,true);return}if(b.dataset.chapter){v95StoreCaret();mojianFlushVisibleEditorDraft();const c=proj()?.chapters.find(x=>x.id===b.dataset.chapter);if(!c)return;state.activeChapterId=c.id;state.activeWorldId=c.worldId;setView('editor');return}if(b.dataset.outline){state.activeWorldId=b.dataset.outline;setView('outline');return}if(b.dataset.world){state.activeWorldId=b.dataset.world;update();return}if(b.dataset.addchapter){addChapter(b.dataset.addchapter);return}if(b.dataset.edit){const [type,id]=b.dataset.edit.split(':');({character:editCharacter,scene:editScene,relation:editRelation,event:editEvent,lore:editLore,note:editNote,task:editTask}[type])?.(id);return}if(b.dataset.delete){const [type,id]=b.dataset.delete.split(':');deleteEntity(type,id);return}if(b.dataset.toggleTask){const x=proj().tasks.find(x=>x.id===b.dataset.toggleTask);if(x){x.done=!x.done;update()}return}if(b.dataset.moveScene){const x=proj().scenes.find(x=>x.id===b.dataset.moveScene);if(x){const arr=['待构思','准备写','已完成'];x.status=arr[(arr.indexOf(x.status)+1)%3];update()}return}if(b.dataset.version){const c=chap(),v=c?.versions[+b.dataset.version];if(v&&confirm('恢复这个历史版本？当前稿件会先保留为新版本。')){snapshot(false);c.content=v.content;c.title=v.title;c.updatedAt=Date.now();closeModal();update('章节历史版本已恢复')}return}if(b.dataset.searchgo){openSearchItem(b.dataset.searchgo);return}if(b.dataset.restore){let x=state.trash.find(x=>x.id===b.dataset.restore);if(x){state.trash=state.trash.filter(p=>p!==x);delete x.deletedAt;if(state.projects.some(p=>p.id===x.id))x.id=uid();state.projects.push(x);v93RecordBookOp(x.id,'restore');update('作品已恢复')}return}if(b.dataset.purge){let x=state.trash.find(p=>p.id===b.dataset.purge);if(x&&confirm(`永久删除「${x.title}」？无法撤销。`)){v93PurgeBooks([x.id]);update('已永久删除，并通知云端删除')}return}});
 $('#aiFileInput').addEventListener('change',async e=>{const f=e.target.files?.[0];if(f){try{const t=await f.text();if(state.view!=='ai')setView('ai');$('#aiReply').value=t;toast('AI 回复已载入')}catch(err){toast('读取失败')}e.target.value=''}});
 $('#modal').addEventListener('mousedown',e=>{if(e.target===$('#modal'))closeModal()});$('#importFile').addEventListener('change',e=>importFile(e.target.files?.[0]));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(editorFocus)exitEditorFocus();closeModal()}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();toast('已保存')}if((e.ctrlKey||e.metaKey)&&e.key==='\\'){e.preventDefault();action('focus')}});
@@ -1737,6 +2018,15 @@ function v93RecordBookOp(id,kind){
 }
 function v93ForgetPurgedDrafts(ids){
  const set=new Set(ids);if(!set.size)return;
+ // 删除作品的章节快照和光标记录，避免留下隐私碎片；异步清理失败不影响云端删除记录。
+ try{const prefix=v95AccountKey('chapter_history__'),caretPrefix=v95AccountKey('caret__');
+  const purgeKeys=[];for(const key of Object.keys(localStorage))if(ids.some(id=>key.startsWith(prefix+id+'__')||key.startsWith(caretPrefix+id+'__')))purgeKeys.push(key);
+  purgeKeys.forEach(k=>localStorage.removeItem(k));
+  if(db){const tr=db.transaction('storage','readwrite'),store=tr.objectStore('storage');
+   const req=store.openCursor();req.onsuccess=e=>{const cursor=e.target.result;if(!cursor)return;
+    const key=String(cursor.key);if(ids.some(id=>key.startsWith(prefix+id+'__')))cursor.delete();cursor.continue();};
+  }
+ }catch(err){console.warn('历史快照隐私清理失败',err)}
  try{localStorage.setItem(MOJIAN_DRAFT_GUARD_KEY,JSON.stringify(mojianReadGuards().filter(x=>!set.has(x.bookId))))}
  catch(e){console.warn('旧正文草稿保护缓存清理未完成',e)}
  // 历史恢复点是独立的整库副本：清除其中的永久删除作品，但不影响其他书。
@@ -1829,7 +2119,7 @@ function v93ScheduleCloudSync(ms=1500){
 async function v93SyncRun(manual=false){
  if(!v9CloudToken()||!mojianAuthState.connected){if(manual)toast('请先登录私人书库');return false}
  if(v93SyncBusy){v93AutoSyncRepeat=true;return false}
- v93SyncBusy=true;v93SyncMessage='正在自动同步…';let ok=false;
+ v93SyncBusy=true;v95OnCloudStart();v93SyncMessage='正在自动同步…';let ok=false;
  try{
   // A snapshot protects unsynced drafts before any cloud download/merge.
   await save();
@@ -1898,12 +2188,14 @@ async function v93SyncRun(manual=false){
    await save();
    if(result.conflicts.length){v93SyncMessage='已自动保留不同版本：'+result.conflicts.length+' 处';toast('检测到不同设备都修改了同一本小说，两个版本已分别保留')}
    else v93SyncMessage=v93SyncSignature(state)===v93SyncSignature(savedCloud)?'正文与云端一致 · 版本 '+updatedRev:'本机草稿已保存 · 云端正在继续同步';
-   if(v93SyncSignature(state)!==v93SyncSignature(savedCloud))v93AutoSyncRepeat=true;
+   const fullySynced=v93SyncSignature(state)===v93SyncSignature(savedCloud);
+   if(!fullySynced)v93AutoSyncRepeat=true;
+   v95OnCloudResult(fullySynced);
    ok=true;break;
   }
-  if(!ok)v93SyncMessage='写作期间发生更新，正在重新尝试同步';
+  if(!ok){v93SyncMessage='写作期间发生更新，正在重新尝试同步';v95OnCloudResult(false);}
  }catch(e){
-  v93SyncMessage='自动同步未完成，本机稿件仍保留：'+e.message;
+  v93SyncMessage='自动同步未完成，本机稿件仍保留：'+e.message;v95OnCloudResult(false,e.message);
   console.warn(v93SyncMessage);
   if(manual)toast(v93SyncMessage);
  }finally{
@@ -1956,7 +2248,7 @@ async function mojianApplyAccount(info){
  v93SyncKey=mojianLocalKey('mojian_v93_sync_hash');
  v93AutoBaseKey=mojianLocalKey('mojian_v93_auto_cloud_base_v1');
  v93Prefs={customFont:'',autoSync:true,syncMins:1,treeWidth:232,asideWidth:250,hideTree:false,hideAside:false,priceRules:{},badWords:'',timerMinutes:25,...(()=>{try{return JSON.parse(localStorage.getItem(v93Storage)||'{}')}catch(e){return {}}})()};
- v93Prefs.autoSync=true;
+ v93Prefs.autoSync=true;v95ResetAccountStatus();
  v9CloudConfig();
  sessionApiKeys.clear();apiProfiles=[];activeApiId='';customPrompts=[];loadApiProfiles();
  v93SyncBusy=false;v93SyncConflict=null;v93SyncMessage='正在加载 '+info.username+' 的书库';
@@ -1993,7 +2285,7 @@ function mojianAuthLogout(show=true){
  sessionStorage.removeItem('mojian_auth_v2');localStorage.removeItem('mojian_auth_v2');
  sessionStorage.removeItem('mojian_auth_v1');localStorage.removeItem('mojian_auth_v1');
  mojianAuthState.connected=false;mojianAuthState.user=null;mojianAccount=null;
- sessionApiKeys.clear();state=defaults();v93SyncMessage='未登录';
+ sessionApiKeys.clear();state=defaults();v93SyncMessage='未登录';v95ResetAccountStatus();
  document.getElementById('mojanManage')?.remove();
  if(show)mojianAuthShow('login');
 }
