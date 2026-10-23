@@ -970,6 +970,24 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
  }
 }
 </style>
+
+<style id="mojian-v958-newline-and-font">
+/* V9.5.8: Only manuscript font size changes, not the interface or chapter data. */
+.v958-font-controls{display:inline-flex;flex:0 0 auto;align-items:center;gap:3px;white-space:nowrap;color:var(--muted);font-size:12px;max-height:34px}
+.v958-font-controls button{min-width:31px;min-height:30px;padding:3px 5px;border:1px solid var(--line);background:var(--paper);border-radius:6px;font-weight:700;touch-action:manipulation}
+.v958-font-controls button:active{background:var(--soft);color:var(--blue)}
+.v958-font-controls output{font-variant-numeric:tabular-nums;min-width:35px;text-align:center;color:var(--ink);font-weight:700}
+.v958-font-controls .v958-font-caption{padding-right:4px;font-size:12px}
+.v958-focus-font{border:0;padding:0;gap:2px;max-height:32px}
+.v958-focus-font button{min-width:28px;min-height:28px;font-size:12px;padding:2px}
+.v958-focus-font output{min-width:30px;font-size:11px}
+@media(max-width:660px){
+ body.studio-writing .v958-font-controls{max-height:33px!important;flex-shrink:0!important}
+ body.studio-writing .novel-format-bar .v958-font-controls{touch-action:manipulation!important}
+ body.studio-writing.focus .focus-hud .focus-name{max-width:58px}
+ body.studio-writing.focus .v958-focus-font{display:inline-flex!important}
+}
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
@@ -1447,15 +1465,15 @@ function libraryCards(){const q=activeSearch.trim().toLowerCase();let ps=state.p
 function showDashboard(){const p=proj();if(!p)return setView('library');const ws=p.workspace,last=p.chapters.find(c=>c.id===ws.lastChapterId)||p.chapters.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0],wc=total(p),prog=Math.min(100,Math.round(wc/Math.max(1,p.goal)*100));$('#main').innerHTML=`<div class="wrap workspace-home"><div class="workspace-bookhead"><div class="workspace-bookcover cover ${p.theme==='blue'?'':escapeHTML(p.theme)}${mjCoverClass(p)}">${mjCoverImg(p)}<small>${escapeHTML(p.genre||'NOVEL')}</small><strong>${escapeHTML(p.title)}</strong><span class="cover-symbol">墨间 · 原创小说</span></div><div class="workspace-bookinfo"><div class="kicker">YOUR PERSONAL BOOK STUDIO / 独立小说工作室</div><h1>${escapeHTML(p.title)}</h1><p class="workspace-motto">${escapeHTML(ws.motto||p.description||'一本小说，一整个独立的创作世界。')}</p><div class="workspace-tags"><span class="chip blue">${escapeHTML(p.status)}</span><span class="chip">${escapeHTML(p.genre)}</span><span class="chip">${fmt(wc)} 字</span><span class="chip">${p.chapters.length} 章</span>${p.tags?`<span class="chip">${escapeHTML(shorten(p.tags,48))}</span>`:''}</div><div class="btnrow" style="margin-top:18px"><button class="btn primary" data-action="editor">${ico('pen','sm')}继续写作</button><button class="btn" data-action="reading">${ico('book','sm')}阅读本书</button><button class="btn" data-action="workspace-style">${ico('settings','sm')}本书外观</button><button class="btn" data-action="cover-upload">${ico('plus','sm')}更换封面</button><button class="btn" data-action="switch-book">${ico('grid','sm')}切换小说</button></div></div></div><div class="creation-flow" aria-label="本书创作流程"><span class="creation-flow-title">创作流程</span><button data-action="outline">${ico('layers','sm')} 定大纲</button><span class="flow-chevron">›</span><button data-action="scenes">${ico('list','sm')} 排剧情</button><span class="flow-chevron">›</span><button data-action="editor">${ico('pen','sm')} 写正文</button><span class="flow-chevron">›</span><button data-action="reading">${ico('book-open','sm')} 阅读校稿</button></div><div class="workspace-privacy-line">${ico('check','sm')}你现在位于《${escapeHTML(p.title)}》的专属工作空间。下方的章节、人物、大纲、脑图和 AI 对话仅属于这本作品。</div><div class="workspace-statgrid"><div class="workspace-stat"><span>已写正文</span><strong>${fmt(wc)} 字</strong></div><div class="workspace-stat"><span>章节总数</span><strong>${p.chapters.length} 章</strong></div><div class="workspace-stat"><span>分卷 / 世界</span><strong>${p.worlds.length} 个</strong></div><div class="workspace-stat"><span>人物档案</span><strong>${p.characters.length} 人</strong></div></div><div class="workspace-columns"><div class="workspace-primary"><div class="card"><div class="bigrow"><strong>继续这本书</strong><span class="chip">独立进度</span></div>${last?`<button class="workspace-lastchapter" data-chapter="${escapeHTML(last.id)}"><span class="chapter-index">${ico('pen')}</span><span><b>${escapeHTML(last.title)}</b><small>${escapeHTML(getWorld(p,last.worldId)?.title||'分卷')} · ${fmt(words(last.content))} 字 · 上次编辑 ${when(last.updatedAt)}</small></span>${ico('arrow')}</button>`:''}<div class="statbar" style="margin:15px 0 8px"><span style="width:${prog}%"></span></div><div class="bigrow muted"><span>本书已完成 ${prog}%</span><span>目标 ${fmt(p.goal)} 字</span></div></div><div class="card"><div class="bigrow"><strong>本书的世界 / 分卷</strong><button class="btn small" data-action="create-world">＋ 新增世界</button></div><div class="workspace-worldgrid">${p.worlds.map((w,i)=>`<button class="workspace-world" data-outline="${w.id}"><small>WORLD ${String(i+1).padStart(2,'0')}</small><b>${escapeHTML(w.title)}</b><span>${escapeHTML(shorten(w.intro||'还没有填写本世界的大纲',40))}</span><em>${p.chapters.filter(c=>c.worldId===w.id).length} 章</em></button>`).join('')}</div></div></div><div class="workspace-secondary"><div class="card"><div class="bigrow"><strong>本书独立便笺</strong><button class="btn small" data-action="workspace-style">编辑</button></div><div class="workspace-note">${escapeHTML(ws.deskNote||'可以在这里记录这本小说的创作方向、重要提醒、文风要求和灵感。它不会显示到其他作品。')}</div></div><div class="card"><strong>进入本书的创作页面</strong><div class="workspace-shortcuts"><button data-action="editor">${ico('pen')}<span>章节正文</span>${ico('arrow','sm')}</button><button data-action="outline">${ico('layers')}<span>世界与大纲</span>${ico('arrow','sm')}</button><button data-action="characters">${ico('users')}<span>人物与关系</span>${ico('arrow','sm')}</button><button data-action="mindmap">${ico('link')}<span>故事关系网</span>${ico('arrow','sm')}</button><button data-action="ai">${ico('download')}<span>AI 交换站</span>${ico('arrow','sm')}</button><button data-action="export-project">${ico('download')}<span>备份本书</span>${ico('arrow','sm')}</button></div></div></div></div></div>`}
 
 function showEditor(){const p=proj();if(!p)return setView('library');if(!p.chapters.length){const w=p.worlds[0];p.chapters.push(freshChapter(w.id,1));state.activeChapterId=p.chapters[0].id;mark()}const c=chap(),w=getWorld(p,c.worldId)||wld();$('#main').innerHTML=`<div class="editor-shell"><div class="editor-tree"><div class="editor-sidehead"><span>世界 / 章节</span><button class="iconbtn" data-action="create-world" title="新建世界">${ico('plus','sm')}</button></div><div class="studio-context"><button data-action="dashboard">${ico('home','sm')} 作品主页</button><button data-action="nav-toggle">${ico('panel','sm')} 全部功能</button></div><div class="filters" style="margin:0 5px 14px"><input class="input" id="treeSearch" placeholder="搜索章节…" style="padding:9px 10px"></div><div id="editorTree">${editorTree()}</div></div><div class="editor-central">
- <div class="focus-hud" id="focusHud"><span class="focus-name" title="${escapeHTML(p.title)}">${escapeHTML(p.title)}</span><span class="focus-meta" id="focusCount">${fmt(words(c.content))} 字</span><span id="focusSave" class="focus-meta">自动保存</span><button class="btn small primary" data-action="focus" title="退出满屏专注模式（Esc）">${ico('focus','sm')}退出专注</button></div>
- <div class="editor-head"><div class="writer-context"><button data-nav="outline">故事大纲</button><span>›</span><button data-story-map="focus-chapter">关系图定位本章</button><span class="writer-context-save">独立章节 · 自动保存</span></div><div class="kicker">${escapeHTML(p.title)} / ${escapeHTML(w.title)}</div><input id="edTitle" class="ed-title" value="${escapeHTML(c.title)}" maxlength="150" placeholder="输入章节标题"><div class="ed-meta"><span id="edCount">${fmt(words(c.content))} 字</span>　·　${escapeHTML(c.status)}　·　最后修改 ${when(c.updatedAt)}</div><div class="v95-status-strip" aria-live="polite"><span id="v95LocalStatus" data-state="ready">本机状态待确认</span><span id="v95CloudStatus" data-state="unknown">云端等待核对</span><button class="v95-time-link" data-v95="time-machine" title="查看本章草稿历史">↶ 草稿时光机</button></div><div class="v95-mobile-chapters"><button type="button" data-v95="prev">‹ 上章</button><button type="button" data-v95="undo">撤销</button><button type="button" data-v95="redo">重做</button><button type="button" data-v95="time-machine">时光机</button><button type="button" data-v95="next">下章 ›</button><button type="button" data-v95="hide-keyboard" title="收起手机键盘">收起键盘</button></div><div class="edtoolbar writer-toolbar-v82"><button class="btn small" data-action="create-chapter">${ico('plus','sm')} 新章</button><button class="btn small" data-writer-plan="toggle">${ico('book','sm')} 本章计划</button><button class="btn small" data-nav="sceneStudio">场景</button><button class="btn small" data-action="snapshot">存版本</button><button class="btn small" data-action="reading">阅读校稿</button><button class="btn small primary" data-action="focus">${ico('focus','sm')} 专注</button><button class="btn small studio-ai-compact" data-action="toggle-assistant">AI 助手</button><details class="writer-extra-menu"><summary>更多工具 <span aria-hidden="true">⌄</span></summary><div class="writer-menu-panel"><b class="menu-title">正文操作</b><button data-action="snapshot">保存当前版本</button><button data-nav="revision">AI 校稿对照</button><button data-nav="memory">全书记忆中心</button><button data-action="compare-versions">历史版本对照</button><button data-action="versions">全部历史版本</button><button data-action="chapter-options">管理章节</button><button data-action="find-replace">本章查找替换</button><button data-action="insert-divider">插入场景分隔线</button><button data-action="format-toolbox">小说排版工具</button><button data-v92="selected-toolbar">选段编辑工具</button><button data-nav="linkCenter">正文·人物·伏笔联动</button><button data-nav="chapterBatch">章节批量管理</button><b class="menu-title">视图和资料</b><button data-action="reader">本章阅读预览</button><button data-action="reference">对照世界大纲</button><button data-action="writer-normal">常规布局</button><button data-action="writer-wide">宽屏布局</button><button data-action="writer-max">铺满布局</button><button data-action="mindmap">故事关系网</button><button data-action="settings">写作偏好设置</button><button data-action="api-config">多个 AI 接口</button><button data-action="toggle-assistant">显示 / 隐藏 AI 助手</button></div></details></div><div class="novel-format-bar" id="novelFormatBar" aria-label="小说排版工具"><span class="format-label">✎ 小说排版</span><button class="format-chip" id="autoIndentButton" data-action="format-indent-toggle" title="开启后按回车，自动输入指定数量的全角空格">自动首行缩进</button><label class="format-mini-label" for="formatIndentCount">缩进</label><select id="formatIndentCount" class="format-compact" title="每段实际写入几个全角空格"><option value="0">0 字</option><option value="1">1 字</option><option value="2">2 字</option><option value="3">3 字</option><option value="4">4 字</option></select><button class="format-chip" id="paragraphGapButton" data-action="format-gap-toggle" title="回车时在段落间留一个空行">段间空行</button><span class="format-spacer"></span><button class="format-chip" data-action="format-new-paragraph" title="插入新段落（Alt+Enter）">↵ 新段落</button><button class="format-chip" data-action="format-dialogue" title="插入中文双引号">“” 对话</button><button class="format-chip format-strong" data-action="format-toolbox">排版工具 <span aria-hidden="true">⌄</span></button></div></div>
+ <div class="focus-hud" id="focusHud"><span class="focus-name" title="${escapeHTML(p.title)}">${escapeHTML(p.title)}</span><span class="focus-meta" id="focusCount">${fmt(words(c.content))} 字</span><span id="focusSave" class="focus-meta">自动保存</span><div class="v958-font-controls v958-focus-font" aria-label="专注模式正文字号"><button type="button" data-v958-font="minus" aria-label="缩小正文字号">A−</button><output data-v958-font-value>19px</output><button type="button" data-v958-font="plus" aria-label="放大正文字号">A＋</button></div><button class="btn small primary" data-action="focus" title="退出满屏专注模式（Esc）">${ico('focus','sm')}退出专注</button></div>
+ <div class="editor-head"><div class="writer-context"><button data-nav="outline">故事大纲</button><span>›</span><button data-story-map="focus-chapter">关系图定位本章</button><span class="writer-context-save">独立章节 · 自动保存</span></div><div class="kicker">${escapeHTML(p.title)} / ${escapeHTML(w.title)}</div><input id="edTitle" class="ed-title" value="${escapeHTML(c.title)}" maxlength="150" placeholder="输入章节标题"><div class="ed-meta"><span id="edCount">${fmt(words(c.content))} 字</span>　·　${escapeHTML(c.status)}　·　最后修改 ${when(c.updatedAt)}</div><div class="v95-status-strip" aria-live="polite"><span id="v95LocalStatus" data-state="ready">本机状态待确认</span><span id="v95CloudStatus" data-state="unknown">云端等待核对</span><button class="v95-time-link" data-v95="time-machine" title="查看本章草稿历史">↶ 草稿时光机</button></div><div class="v95-mobile-chapters"><button type="button" data-v95="prev">‹ 上章</button><button type="button" data-v95="undo">撤销</button><button type="button" data-v95="redo">重做</button><button type="button" data-v95="time-machine">时光机</button><button type="button" data-v95="next">下章 ›</button><button type="button" data-v95="hide-keyboard" title="收起手机键盘">收起键盘</button></div><div class="edtoolbar writer-toolbar-v82"><button class="btn small" data-action="create-chapter">${ico('plus','sm')} 新章</button><button class="btn small" data-writer-plan="toggle">${ico('book','sm')} 本章计划</button><button class="btn small" data-nav="sceneStudio">场景</button><button class="btn small" data-action="snapshot">存版本</button><button class="btn small" data-action="reading">阅读校稿</button><button class="btn small primary" data-action="focus">${ico('focus','sm')} 专注</button><button class="btn small studio-ai-compact" data-action="toggle-assistant">AI 助手</button><details class="writer-extra-menu"><summary>更多工具 <span aria-hidden="true">⌄</span></summary><div class="writer-menu-panel"><b class="menu-title">正文操作</b><button data-action="snapshot">保存当前版本</button><button data-nav="revision">AI 校稿对照</button><button data-nav="memory">全书记忆中心</button><button data-action="compare-versions">历史版本对照</button><button data-action="versions">全部历史版本</button><button data-action="chapter-options">管理章节</button><button data-action="find-replace">本章查找替换</button><button data-action="insert-divider">插入场景分隔线</button><button data-action="format-toolbox">小说排版工具</button><button data-v92="selected-toolbar">选段编辑工具</button><button data-nav="linkCenter">正文·人物·伏笔联动</button><button data-nav="chapterBatch">章节批量管理</button><b class="menu-title">视图和资料</b><button data-action="reader">本章阅读预览</button><button data-action="reference">对照世界大纲</button><button data-action="writer-normal">常规布局</button><button data-action="writer-wide">宽屏布局</button><button data-action="writer-max">铺满布局</button><button data-action="mindmap">故事关系网</button><button data-action="settings">写作偏好设置</button><button data-action="api-config">多个 AI 接口</button><button data-action="toggle-assistant">显示 / 隐藏 AI 助手</button></div></details></div><div class="novel-format-bar" id="novelFormatBar" aria-label="小说排版工具"><span class="format-label">✎ 小说排版</span><button class="format-chip" id="autoIndentButton" data-action="format-indent-toggle" title="开启后按回车，自动输入指定数量的全角空格">自动首行缩进</button><label class="format-mini-label" for="formatIndentCount">缩进</label><select id="formatIndentCount" class="format-compact" title="每段实际写入几个全角空格"><option value="0">0 字</option><option value="1">1 字</option><option value="2">2 字</option><option value="3">3 字</option><option value="4">4 字</option></select><button class="format-chip" id="paragraphGapButton" data-action="format-gap-toggle" title="回车时在段落间留一个空行">段间空行</button><span class="format-spacer"></span><div class="v958-font-controls" aria-label="本书正文字号"><span class="v958-font-caption">字号</span><button type="button" data-v958-font="minus" aria-label="缩小正文字号">A−</button><output data-v958-font-value>19px</output><button type="button" data-v958-font="plus" aria-label="放大正文字号">A＋</button><button type="button" data-v958-font="reset" title="恢复原本的默认字号" aria-label="恢复默认字号">默认</button></div><button class="format-chip" data-action="format-new-paragraph" title="插入新段落（Alt+Enter）">↵ 新段落</button><button class="format-chip" data-action="format-dialogue" title="插入中文双引号">“” 对话</button><button class="format-chip format-strong" data-action="format-toolbox">排版工具 <span aria-hidden="true">⌄</span></button></div></div>
  <section class="writer-plan-panel" id="writerPlanPanel" ${p.workspace.writerPlanOpen?'':'hidden'}><div class="writer-plan-heading"><div><strong>本章写作计划</strong><span class="muted">只属于《${escapeHTML(p.title)}》的这一章，改动立即保存</span></div><button class="btn small" data-writer-plan="toggle">收起</button></div><div class="writer-plan-content"><textarea id="edSynopsis" class="outline-input" placeholder="这一章的目标、情绪、冲突、转折，以及结尾要留下的问题……">${escapeHTML(c.synopsis||'')}</textarea><div class="writer-plan-controls"><label>剧情阶段 <select id="edArcStage"><option value="">暂不归类</option>${outlineActs.map(([k,l])=>`<option value="${k}" ${c.arcStage===k?'selected':''}>${l}</option>`).join('')}</select></label><label>章节进度 <select id="edStatus">${['草稿','构思中','待修改','已完成','已定稿','已发布'].map(k=>`<option ${c.status===k?'selected':''}>${k}</option>`).join('')}</select></label><div class="writer-plan-links"><button data-nav="scenes">剧情卡片</button><button data-nav="outline">编辑世界大纲</button><button data-story-map="focus-chapter">关系网中定位</button></div></div></div></section><div class="v92-selected-tools" id="v92SelectedTools" hidden><span id="v92SelectionInfo">选中段落</span><button data-v92="selected-link">关联人物/伏笔</button><button data-v92="selected-note">批注</button><button data-v92="selected-backup">备用稿</button><button data-v92="selected-polish">AI 润色</button><button data-v92="selected-expand">AI 扩写</button><button data-v92="selected-close">收起</button></div><div class="ed-scroll"><div class="sheet"><textarea id="edBody" class="texteditor" aria-label="小说正文编辑器" spellcheck="${!!state.settings.spellcheck}" placeholder="从这里开始，写下你的故事……">${escapeHTML(c.content)}</textarea><article class="reader-pane" id="readPreview" aria-label="本章阅读预览"></article></div></div><div class="ed-bottom"><span id="bottomCount">本章 ${fmt(words(c.content))} 字</span><span id="caretStats" class="caret-stats">第 1 段 · 第 1 行 · 第 1 列</span><span class="hidephone">目标 ${fmt(state.settings.chapterGoal)} 字</span><span id="chapterProgress" class="grow hidephone">完成 ${Math.min(100,Math.round(words(c.content)/Math.max(1,state.settings.chapterGoal)*100))}%</span><span class="hidephone">Ctrl/⌘ + S 保存 · Esc 退出专注</span><button data-action="outline" class="linky">世界大纲</button></div>
  <aside class="reference-pane" id="referencePane"><div class="bigrow"><strong>写作参考</strong><button class="iconbtn" data-action="reference" title="关闭参考">${ico('focus','sm')}</button></div><div class="r-title">章节梗概</div><p id="referenceSynopsis">${escapeHTML(c.synopsis||'本章暂无梗概；可以在常规模式的右侧补充。')}</p><div class="r-title">世界简介</div><p>${escapeHTML(w.intro||'暂无世界简介')}</p><div class="r-title">故事开局 / 推进</div><p>${escapeHTML([w.opening,w.development].filter(Boolean).join('\n\n')||'尚未填写')}</p><button class="btn small" data-action="outline">打开完整大纲</button></aside>
  </div><div class="ed-aside">${assistantAside()}</div></div>`;
  document.body.classList.toggle('reader-mode',editorReading);document.body.classList.toggle('reference-mode',editorReference);
  if(editorReading)refreshReader();
  $('#edBody').addEventListener('input',e=>{const newCount=words(e.target.value),oldCount=words(c.content),delta=Math.max(0,newCount-oldCount);v95UndoInput(p,c,e.target.value);c.content=e.target.value;c.updatedAt=Date.now();p.updatedAt=c.updatedAt;mojianGuardDraft(p,c);v95ScheduleHistory();recordWords(p,delta);$('#edCount').textContent=fmt(newCount)+' 字';$('#bottomCount').textContent='本章 '+fmt(newCount)+' 字';if($('#focusCount'))$('#focusCount').textContent=fmt(newCount)+' 字';$('#chapterProgress')&&($('#chapterProgress').textContent='完成 '+Math.min(100,Math.round(newCount/Math.max(1,state.settings.chapterGoal)*100))+'%');/* 输入不触发缩放、不改变编辑器尺寸，也不强制重定位滚动条 */mark()});
- $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();restoreChapterMenuScroll('book:'+p.id);v95EditorReady();
+ $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();v958BindEditor();restoreChapterMenuScroll('book:'+p.id);v95EditorReady();
 }
 function refreshReader(){const c=chap(),host=$('#readPreview');if(!host||!c)return;const paras=c.content.replace(/\r\n?/g,'\n').split('\n').map(x=>`<p style="${/^[\u3000 \t]+/.test(x)?'text-indent:0':''}">${escapeHTML(x)||'&nbsp;'}</p>`).join('');host.innerHTML=`<h2>${escapeHTML(c.title||'未命名章节')}</h2>${paras||'<p class="reader-empty">这章还没有正文。点击“阅读”即可切回写作。</p>'}`;host.scrollTop=0}
 function toggleReader(){if(state.view!=='editor')return;if(editorFocus)exitEditorFocus();editorReading=!editorReading;document.body.classList.toggle('reader-mode',editorReading);const b=$('#readerBtn');if(b){b.classList.toggle('mode-on',editorReading);b.setAttribute('aria-pressed',String(editorReading))}if(editorReading){refreshReader();toast('阅读预览：原文不会被修改')}else{$('#edBody')?.focus({preventScroll:true});toast('已返回写作')}}
@@ -2971,6 +2989,118 @@ const mojianInitReady=init();
   if(!mobileWriting())return;
   const ed=editor();if(ed)clamp(ed);
  },{passive:true});
+})();
+</script>
+
+<script id="mojian-v958-newline-and-font">
+/* 2026-10-23: show the newly empty line immediately after Enter; no phantom
+   newline or permanent padding is inserted into the manuscript. */
+(function(){
+ 'use strict';
+ const MIN=14,MAX=32;
+ function editor(){return document.getElementById('edBody')}
+ function currentFontSize(){
+  const p=typeof proj==='function'?proj():null;
+  const base=Number(state?.settings?.fontSize)||19;
+  const local=Number(p?.workspace?.fontSize)||0;
+  return Math.max(MIN,Math.min(MAX,local||base));
+ }
+ function updateLabels(){
+  const size=currentFontSize();
+  document.querySelectorAll('[data-v958-font-value]').forEach(el=>el.textContent=size+'px');
+ }
+ function setFontSize(action){
+  if(state?.view!=='editor')return;
+  const p=proj();if(!p)return;
+  p.workspace??={};
+  const oldSize=currentFontSize();
+  const next=action==='reset'?0:Math.min(MAX,Math.max(MIN,oldSize+(action==='plus'?1:-1)));
+  if(next!==0&&oldSize===next)return;
+  const ed=editor(),top=ed?.scrollTop||0;
+  p.workspace.fontSize=next; // existing per-book field, already included in normal backup / cloud sync
+  applySettings();
+  updateLabels();
+  if(ed){
+   ed.scrollTop=top;
+   const caret=ed.selectionStart;
+   if(document.activeElement===ed)v958KeepCaretLineVisible(ed,caret);
+  }
+  mark();
+ }
+ /* Mirror matches textarea's font and available line width, including wrapped
+    lines. A trailing newline has a real caret line even before first character. */
+ function caretTop(ed,caret){
+  const style=getComputedStyle(ed),mirror=document.createElement('div');
+  mirror.setAttribute('aria-hidden','true');
+  const props=['fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing',
+    'wordSpacing','textAlign','direction','tabSize','textIndent','paddingTop','paddingRight',
+    'paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth',
+    'borderLeftWidth','boxSizing'];
+  mirror.style.position='fixed';mirror.style.visibility='hidden';mirror.style.pointerEvents='none';
+  mirror.style.top='-100000px';mirror.style.left='0';mirror.style.width=ed.clientWidth+'px';
+  mirror.style.height='auto';mirror.style.minHeight='0';mirror.style.maxHeight='none';
+  mirror.style.whiteSpace='pre-wrap';mirror.style.overflowWrap='anywhere';
+  mirror.style.wordWrap='break-word';mirror.style.wordBreak=style.wordBreak;
+  mirror.style.border='0';mirror.style.overflow='visible';
+  props.forEach(k=>{mirror.style[k]=style[k]});
+  // Preserve white-space: a zero-width marker on the new line lets us measure
+  // the empty line, rather than waiting for a typed character to create one.
+  mirror.appendChild(document.createTextNode(ed.value.slice(0,caret)));
+  const marker=document.createElement('span');marker.textContent='\u200b';mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+  const y=marker.getBoundingClientRect().top-mirror.getBoundingClientRect().top;
+  const lh=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*2;
+  mirror.remove();
+  return {top:y,bottom:y+lh};
+ }
+ function keepCaretLineVisible(ed,caret){
+  if(!ed||!ed.isConnected||state?.view!=='editor')return;
+  const pos=caretTop(ed,caret??ed.selectionStart);
+  // Editor content is scrollable only if text exceeds the viewport. Do not
+  // scroll past the last *actual* newline or typed character.
+  const visibleBottom=ed.scrollTop+ed.clientHeight-3;
+  const visibleTop=ed.scrollTop+parseFloat(getComputedStyle(ed).paddingTop||'0');
+  const max=Math.max(0,ed.scrollHeight-ed.clientHeight);
+  if(pos.bottom>visibleBottom)ed.scrollTop=Math.min(max,Math.max(0,ed.scrollTop+pos.bottom-visibleBottom));
+  else if(pos.top<visibleTop)ed.scrollTop=Math.max(0,pos.top-4);
+  // Browsers sometimes clamp internally after their own textarea layout pass.
+  ed.scrollTop=Math.max(0,Math.min(max,ed.scrollTop));
+ }
+ window.v958KeepCaretLineVisible=keepCaretLineVisible;
+ let pending=0;
+ function scheduleCaret(ed){
+  cancelAnimationFrame(pending);
+  const caret=ed.selectionStart;
+  pending=requestAnimationFrame(()=>{
+   if(ed!==editor()||!ed.isConnected)return;
+   keepCaretLineVisible(ed,caret);
+   if(typeof v95StoreCaret==='function')v95StoreCaret();
+  });
+ }
+ window.v958BindEditor=function(){
+  const ed=editor();if(!ed)return;
+  updateLabels();
+  ed.addEventListener('keydown',e=>{
+   if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229)scheduleCaret(ed);
+  });
+  ed.addEventListener('beforeinput',e=>{
+   if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak'){
+    // Some Android input methods dispatch beforeinput/input without keydown.
+    setTimeout(()=>scheduleCaret(ed),0);
+   }
+  });
+  ed.addEventListener('input',e=>{
+   const previous=ed.value.slice(0,ed.selectionStart);
+   const line=previous.slice(previous.lastIndexOf('\n')+1);
+   if((e.inputType==='insertParagraph'||e.inputType==='insertLineBreak') ||
+      (previous.includes('\n') && /^[\u3000 \t]*$/.test(line)))scheduleCaret(ed);
+  });
+ };
+ document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-v958-font]');if(!b)return;
+  e.preventDefault();
+  setFontSize(b.dataset.v958Font);
+ });
 })();
 </script>
 </body></html>
