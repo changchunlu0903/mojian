@@ -832,6 +832,51 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
 }
 
 </style>
+<style id="mojian-v952-scroll-style">
+
+/* V9.5.2 -- axis-specific mobile scroll. Keep authored canvases pannable. */
+@media (max-width: 870px){
+ html,body{width:100%;max-width:100%;overflow-x:clip!important;overscroll-behavior-x:none!important}
+ #app{max-width:100%;min-width:0;overflow-x:clip!important}
+ .top,.brand,.breadcrumb,.main,.wrap,.editor-shell,.editor-central,.editor-head,
+ .reading-app,.reading-main,.reading-viewport,.workspace-home,.workspace-columns,
+ .workspace-primary,.workspace-secondary,.cards,.card,.listitem,.nav{min-width:0;max-width:100%;box-sizing:border-box}
+ /* Each page remains vertically scrollable ONLY if its contents exceed the viewport. */
+ #main.main{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-x:none;overscroll-behavior-y:contain}
+ .nav,.editor-tree,.read-annotation-rail,.reading-library,
+ .mo-sheet-body,.mojan-manage-mask{overflow-x:hidden!important;overflow-y:auto;overscroll-behavior:contain}
+ .wrap{overflow-x:clip;overflow-y:visible}
+ .editor-shell,.editor-central,.reading-app{overflow-x:clip}
+ /* Real reading and writing panes have their own vertical scrolling. */
+ .ed-scroll,.reading-viewport,.reader-content,.ed-aside .ai-messages{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain}
+ .texteditor{max-width:100%!important;overflow-x:hidden!important;overflow-wrap:anywhere;resize:none}
+ /* Dialogs scroll vertically when long; tool panes and canvases retain their own scroll behavior. */
+ .modalshade .dialog,.mojan-manage-card,.v95-time-card{max-width:calc(100vw - 20px);min-width:0}
+ .modalshade .dialog,.mojan-manage-mask{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:contain}
+ .v95-time-card{overflow:hidden}
+ .input,.area,.select,textarea{max-width:100%;box-sizing:border-box}
+ /* Wide data tables alone may pan sideways; the full page must not. */
+ .table{display:block;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;touch-action:pan-x}
+ .listitem .maintext,.workspace-bookinfo,.workspace-shortcuts,.workspace-lastchapter{min-width:0}
+ /* Intentional single-row strips: horizontal only. No vertical rubber-banding. */
+ .novel-format-bar,.ai-quick,.v93-editor-strip{
+  max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;
+  overscroll-behavior-x:contain;overscroll-behavior-y:none;
+  touch-action:pan-x;-webkit-overflow-scrolling:touch;
+ }
+ .novel-format-bar>* , .ai-quick>*{flex-shrink:0}
+}
+@media (max-width:660px){
+ .top,.mo-mobile-dock,.reading-toolbar,.reading-footer,.editor-head{max-width:100vw;overflow-x:clip}
+ .reading-toolbar{min-width:0;flex-wrap:wrap;overflow-y:visible;touch-action:pan-y}
+ .ed-scroll{overflow-x:hidden!important;overflow-y:auto!important}
+ .editor-central{min-width:0;max-width:100%;overflow-x:clip}
+ .mo-mobile-sheet{max-width:100vw;overflow:hidden}
+ /* The story graph is an intentional free-pan canvas -- no scroll clamp on it. */
+ .mind-viewport,.mindcanvas,.mind-canvas{overscroll-behavior:contain}
+}
+
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
@@ -2527,4 +2572,60 @@ const mojianInitReady=init();
  sync();
 })();
 </script>
-<script>if('serviceWorker' in navigator && (location.protocol==='https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script></body></html>
+<script>if('serviceWorker' in navigator && (location.protocol==='https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))){navigator.serviceWorker.register('./sw.js').catch(()=>{});}</script><script id="mojian-v952-scroll-guard">
+
+/* V9.5.2: Suppress pointless iOS overscroll on fixed panels and at scroll boundaries.
+   No interference with editable text, native select/slider, or draggable story canvas. */
+(function(){
+ 'use strict';
+ let gesture=null;
+ const horizontalOnly='.novel-format-bar,.ai-quick,.v93-editor-strip';
+ const verticalOnly='.nav,.mo-sheet-body,.mojan-manage-mask,.modalshade .dialog,.v95-time-card,.ed-aside,.reading-viewport,.reading-library,.read-annotation-rail';
+ const freeGesture='.mind-viewport,.mindcanvas,.mind-canvas,.mindmap,.mindnode,[data-drag],[draggable="true"],.canvas-viewport,.asset-canvas';
+ const nativeGesture='textarea,input,select,[contenteditable="true"],[contenteditable=""],.reading-paper';
+ function isMobile(){return window.matchMedia('(max-width:870px) and (pointer:coarse)').matches;}
+ function eligible(target){
+  return target instanceof Element && !target.closest(freeGesture+','+nativeGesture);
+ }
+ function canScroll(node,axis,amount){
+  if(!(node instanceof Element))return false;
+  const cs=getComputedStyle(node);
+  const prop=axis==='x'?'overflowX':'overflowY';
+  if(!/^(auto|scroll|overlay)$/.test(cs[prop]))return false;
+  const content=axis==='x'?node.scrollWidth:node.scrollHeight;
+  const visible=axis==='x'?node.clientWidth:node.clientHeight;
+  if(content-visible<=2)return false;
+  const offset=axis==='x'?node.scrollLeft:node.scrollTop;
+  // amount>0: finger slides right/down => scroll offset decreases.
+  return amount>0 ? offset>1 : offset<content-visible-1;
+ }
+ document.addEventListener('touchstart',function(e){
+  gesture=null;
+  if(!isMobile()||e.touches.length!==1||!eligible(e.target))return;
+  gesture={x:e.touches[0].clientX,y:e.touches[0].clientY,target:e.target};
+ },{passive:true,capture:true});
+ document.addEventListener('touchmove',function(e){
+  if(!gesture||!isMobile()||e.touches.length!==1||!e.cancelable)return;
+  const x=e.touches[0].clientX-gesture.x;
+  const y=e.touches[0].clientY-gesture.y;
+  if(Math.abs(x)<5&&Math.abs(y)<5)return;
+  const axis=Math.abs(x)>Math.abs(y)*1.1?'x':Math.abs(y)>Math.abs(x)*1.1?'y':null;
+  if(!axis)return;
+  const target=gesture.target;
+  if(!target.isConnected||!eligible(target)){gesture=null;return;}
+  // Explicitly directional toolbars and vertical panels must not cross-scroll.
+  if((axis==='y'&&target.closest(horizontalOnly))||(axis==='x'&&target.closest(verticalOnly))){e.preventDefault();return;}
+  const delta=axis==='x'?x:y;
+  let node=target;
+  while(node instanceof Element){
+   if(canScroll(node,axis,delta))return;
+   node=node.parentElement;
+  }
+  e.preventDefault();
+ },{passive:false,capture:true});
+ document.addEventListener('touchend',()=>{gesture=null},{passive:true});
+ document.addEventListener('touchcancel',()=>{gesture=null},{passive:true});
+})();
+
+</script>
+</body></html>
