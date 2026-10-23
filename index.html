@@ -923,6 +923,33 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
 }
 
 </style>
+<style id="mojian-v956-focus-viewport-fix">
+/* V9.5.6: Focus + soft keyboard: remove the 52px ordinary-header reservation.
+   V9.5 had applied (visual viewport - 52px) to the main/editor shell even
+   when focus mode had already hidden the header and bottom navigation.
+   Restrict this adjustment to the combined focus+typing state so that
+   ordinary writing mode keeps its own header height and controls. */
+@media (max-width:660px) {
+ body.studio-writing.focus.mobile-typing #app,
+ body.studio-writing.focus.mobile-typing #main.main,
+ body.studio-writing.focus.mobile-typing .editor-shell,
+ body.studio-writing.focus.mobile-typing .editor-central {
+   height:var(--v95-vh,100dvh)!important;
+   max-height:var(--v95-vh,100dvh)!important;
+   min-height:0!important;
+ }
+ body.studio-writing.focus.mobile-typing .ed-scroll {
+   min-height:0!important;
+   flex:1 1 0!important;
+   height:auto!important;
+ }
+ body.studio-writing.focus.mobile-typing .sheet,
+ body.studio-writing.focus.mobile-typing #edBody.texteditor {
+   min-height:0!important;
+   height:100%!important;
+ }
+}
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
