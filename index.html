@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta name="mojian-version" content="9.5.4">
+<head><meta name="mojian-version" content="9.5.5">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#002fa7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="application-name" content="墨间"><meta name="mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="./mojian-icon-192.png"><title>墨间 V9.5.4 · 私人云端书库</title>
+<meta name="theme-color" content="#002fa7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="application-name" content="墨间"><meta name="mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="./mojian-icon-192.png"><title>墨间 V9.5.5 · 私人云端书库</title>
 <style>
 :root{--blue:#002fa7;--blue-bright:#315bdb;--ink:#141923;--muted:#7d8798;--bg:#f5f6f9;--paper:#fff;--panel:#fff;--soft:#f1f3f8;--line:#e4e7ef;--nav:#111724;--navtext:#aeb9ce;--gold:#bc925d;--red:#b54353;--green:#187f66;--shadow:0 10px 35px rgba(17,30,62,.045);--fontsize:19px;--lineheight:2;--editorfont:'Songti SC','STSong','Noto Serif CJK SC',serif}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,'PingFang SC','Microsoft Yahei',system-ui,-apple-system,sans-serif;font-size:14px}button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;border:0;background:none}button:disabled{opacity:.42;cursor:default}input,textarea,select{color:var(--ink)}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #7294ff;outline-offset:2px}.hidden{display:none!important}.ico{width:19px;height:19px;flex:none;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}.ico.sm{width:15px;height:15px}.ico.lg{width:25px;height:25px}.ico.xl{width:32px;height:32px}
@@ -2762,4 +2762,119 @@ const mojianInitReady=init();
 })();
 
 </script>
+
+<script>
+/* 墨间 V9.5.5：手机软键盘状态自动恢复（正文不变、账号与云端不变）。
+ * Android 系统键盘的“收起”键不一定触发 input.blur()/focusout。
+ * 以实际可见视口恢复为准，自动结束 mobile-typing 并恢复底部工具栏。
+ */
+(()=>{
+ 'use strict';
+ const maxWidth=660;
+ const typingSelector='textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),[contenteditable="true"]';
+ let fullHeight=0,seenKeyboard=false,focusAt=0,scheduleID=0,ignoreUntil=0;
+ const small=()=>window.matchMedia('(max-width:'+maxWidth+'px)').matches;
+ const focused=()=>{const a=document.activeElement;return a instanceof Element&&a.matches(typingSelector)?a:null};
+ const viewportHeight=()=>{
+  const vv=window.visualViewport;
+  const v=vv&&Number.isFinite(vv.height)?vv.height:window.innerHeight;
+  return Math.max(0,Math.min(window.innerHeight,v));
+ };
+ const nativeKeyboardHeight=()=>{
+  try{return Math.max(0,navigator.virtualKeyboard?.boundingRect?.height||0)}catch{return 0}
+ };
+ function updateGeometry(){
+  // Original responsive CSS uses this variable for keyboard-open editor height.
+  if(typeof v95UpdateKeyboardHeight==='function')v95UpdateKeyboardHeight();
+ }
+ function settle(delay=90){
+  window.clearTimeout(scheduleID);
+  scheduleID=window.setTimeout(check,delay);
+ }
+ function check(){
+  if(!small()){
+   document.body.classList.remove('mobile-typing');
+   seenKeyboard=false;fullHeight=0;return;
+  }
+  const a=focused();
+  const h=viewportHeight();
+  if(!a){
+   seenKeyboard=false;
+   document.body.classList.remove('mobile-typing');
+   if(h>0)fullHeight=h;
+   updateGeometry();
+   return;
+  }
+  if(h<=0)return;
+  if(!fullHeight)fullHeight=h;
+  const shrink=Math.max(110,Math.min(180,fullHeight*.17));
+  const obscured=(fullHeight-h>shrink) || nativeKeyboardHeight()>110;
+  if(obscured){
+   seenKeyboard=true;
+   document.body.classList.add('mobile-typing');
+  }else if(seenKeyboard&&Date.now()>ignoreUntil){
+   // The keyboard was visibly open and is now hidden, but on Android the
+   // textarea often still has focus: this is why tools stayed collapsed.
+   seenKeyboard=false;
+   if(a.id==='edBody'){
+    try{if(typeof v95StoreCaret==='function')v95StoreCaret()}catch{}
+    try{if(typeof mojianFlushVisibleEditorDraft==='function')mojianFlushVisibleEditorDraft()}catch{}
+   }
+   a.blur();
+   document.body.classList.remove('mobile-typing');
+   fullHeight=h;
+  }
+  updateGeometry();
+ }
+ function changedViewport(){
+  // Only a genuine keyboard-open -> closed transition should trigger blur.
+  // Delay allows Android's viewport to finish animating after tapping Back.
+  settle(110);
+  window.setTimeout(check,330);
+ }
+ document.addEventListener('focusin',e=>{
+  if(!small()||!(e.target instanceof Element)||!e.target.matches(typingSelector))return;
+  const h=viewportHeight();
+  if(!seenKeyboard&&h>fullHeight)fullHeight=h;
+  focusAt=Date.now();ignoreUntil=focusAt+500;
+  document.body.classList.add('mobile-typing');
+  settle(220);
+  window.setTimeout(check,700);
+ },true);
+ document.addEventListener('focusout',e=>{
+  if(!(e.target instanceof Element)||!e.target.matches(typingSelector))return;
+  window.setTimeout(()=>{
+   if(!focused()){
+    seenKeyboard=false;
+    document.body.classList.remove('mobile-typing');
+    const h=viewportHeight();if(h>0)fullHeight=h;
+    updateGeometry();
+   }
+  },150);
+ },true);
+ window.visualViewport?.addEventListener('resize',changedViewport,{passive:true});
+ window.visualViewport?.addEventListener('scroll',changedViewport,{passive:true});
+ window.addEventListener('resize',changedViewport,{passive:true});
+ navigator.virtualKeyboard?.addEventListener?.('geometrychange',changedViewport);
+ window.addEventListener('orientationchange',()=>{
+  seenKeyboard=false;fullHeight=0;settle(550)
+ },{passive:true});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)settle(130)});
+ // Hide button remains available only as fallback for browsers whose keyboard
+ // never changes viewport dimensions; it must also clear the stale toolbar mode.
+ document.addEventListener('click',e=>{
+  if(e.target.closest?.('[data-v95="hide-keyboard"]')){
+   seenKeyboard=false;
+   window.setTimeout(()=>{
+    if(!focused()){
+     document.body.classList.remove('mobile-typing');
+     fullHeight=viewportHeight();updateGeometry();
+    }
+   },170);
+  }
+ },true);
+ if(small()){fullHeight=viewportHeight();settle(400)}
+})();
+</script>
+
 </body></html>
