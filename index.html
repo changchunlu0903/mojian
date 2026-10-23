@@ -950,6 +950,26 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
  }
 }
 </style>
+<style id="mojian-v957-last-line-boundary">
+/* V9.5.7 末行边界：输入框不预留额外的虚拟空行；正文长时仅在自身滚动。 */
+@media(max-width:660px){
+ body.studio-writing #edBody.texteditor{
+  /* 原样式有 60–115px 的底部填充；它使末行后面看起来还能继续滑。 */
+  padding-bottom:6px!important;
+  scroll-padding-bottom:0!important;
+  overscroll-behavior-y:none!important;
+  overscroll-behavior-x:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  touch-action:pan-y;
+  overflow-anchor:none;
+ }
+ body.studio-writing .ed-scroll,
+ body.studio-writing .sheet{
+  overscroll-behavior:none!important;
+ }
+}
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
@@ -2904,4 +2924,53 @@ const mojianInitReady=init();
 })();
 </script>
 
+<script id="mojian-v957-last-line-guard">
+/* Android/iOS: stop rubber-band panning when the caret is already at the end
+   of actual scrollable content. Deliberate newline/paragraphs remain untouched. */
+(()=>{
+ 'use strict';
+ const mobileWriting=()=>document.body.classList.contains('studio-writing') &&
+     window.matchMedia('(max-width:660px)').matches;
+ const editor=()=>document.getElementById('edBody');
+ let point=null;
+ const maxScroll=ed=>Math.max(0,ed.scrollHeight-ed.clientHeight);
+ const clamp=ed=>{
+  const limit=maxScroll(ed);
+  if(ed.scrollTop<0)ed.scrollTop=0;
+  else if(ed.scrollTop>limit)ed.scrollTop=limit;
+ };
+ document.addEventListener('scroll',e=>{
+  if(!mobileWriting()||e.target!==editor())return;
+  const ed=e.target;
+  if(ed.scrollTop < -0.5 || ed.scrollTop>maxScroll(ed)+0.5)clamp(ed);
+ },true);
+ document.addEventListener('touchstart',e=>{
+  point=null;
+  if(!mobileWriting()||e.touches.length!==1)return;
+  if(e.target!==editor())return;
+  point={x:e.touches[0].clientX,y:e.touches[0].clientY,
+         time:Date.now(),el:e.target};
+ },{capture:true,passive:true});
+ document.addEventListener('touchmove',e=>{
+  if(!point||!mobileWriting()||!e.cancelable||e.touches.length!==1)return;
+  const ed=point.el;
+  if(ed!==editor()||!ed.isConnected){point=null;return;}
+  const dx=e.touches[0].clientX-point.x;
+  const dy=e.touches[0].clientY-point.y;
+  if(Math.abs(dy)<9||Math.abs(dy)<=Math.abs(dx))return;
+  // Let the user drag a long-pressed caret/selection without interference.
+  if(Date.now()-point.time>480||ed.selectionStart!==ed.selectionEnd)return;
+  const max=maxScroll(ed);
+  if(max<=2||(dy>0&&ed.scrollTop<=1)||(dy<0&&ed.scrollTop>=max-1)){
+   e.preventDefault();clamp(ed);
+  }
+ },{capture:true,passive:false});
+ document.addEventListener('touchend',()=>{point=null},{capture:true,passive:true});
+ document.addEventListener('touchcancel',()=>{point=null},{capture:true,passive:true});
+ window.visualViewport?.addEventListener('resize',()=>{
+  if(!mobileWriting())return;
+  const ed=editor();if(ed)clamp(ed);
+ },{passive:true});
+})();
+</script>
 </body></html>
