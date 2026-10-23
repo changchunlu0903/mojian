@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta name="mojian-version" content="9.5.0">
+<head><meta name="mojian-version" content="9.5.4">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#002fa7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><title>墨间 V9.5 · V9.3 · 私人云端书库</title>
+<meta name="theme-color" content="#002fa7"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="application-name" content="墨间"><meta name="mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="./mojian-icon-192.png"><title>墨间 V9.5.4 · 私人云端书库</title>
 <style>
 :root{--blue:#002fa7;--blue-bright:#315bdb;--ink:#141923;--muted:#7d8798;--bg:#f5f6f9;--paper:#fff;--panel:#fff;--soft:#f1f3f8;--line:#e4e7ef;--nav:#111724;--navtext:#aeb9ce;--gold:#bc925d;--red:#b54353;--green:#187f66;--shadow:0 10px 35px rgba(17,30,62,.045);--fontsize:19px;--lineheight:2;--editorfont:'Songti SC','STSong','Noto Serif CJK SC',serif}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,'PingFang SC','Microsoft Yahei',system-ui,-apple-system,sans-serif;font-size:14px}button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;border:0;background:none}button:disabled{opacity:.42;cursor:default}input,textarea,select{color:var(--ink)}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #7294ff;outline-offset:2px}.hidden{display:none!important}.ico{width:19px;height:19px;flex:none;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}.ico.sm{width:15px;height:15px}.ico.lg{width:25px;height:25px}.ico.xl{width:32px;height:32px}
@@ -1324,7 +1324,7 @@ function save(){
 function update(msg){proj()&&(proj().updatedAt=Date.now());mark();render();if(msg)toast(msg)}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2500)}
 function applySettings(){document.body.classList.toggle('dark',state.settings.theme==='dark');const currentBook=state.view==='library'?null:proj(),local=currentBook?.workspace||{};const effectiveFont=local.font&&local.font!=='follow'?local.font:state.settings.font;document.documentElement.style.setProperty('--fontsize',(Number(local.fontSize)||state.settings.fontSize)+'px');document.documentElement.style.setProperty('--lineheight',state.settings.lineHeight);document.documentElement.style.setProperty('--editorfont',effectiveFont==='sans'?"'PingFang SC','Microsoft Yahei',sans-serif":effectiveFont==='mono'?"'Consolas','SFMono-Regular',monospace":"'Songti SC','STSong','Noto Serif CJK SC',serif");document.body.dataset.bookSkin=currentBook?.theme||'blue';document.body.classList.toggle('in-book',!!currentBook);document.body.classList.remove('book-paper-warm','book-paper-grey');if(local.paper==='warm'||local.paper==='grey')document.body.classList.add('book-paper-'+local.paper);const s=state.settings;document.body.classList.remove('paper-warm','paper-grey');if(s.paper==='warm'||s.paper==='grey')document.body.classList.add('paper-'+s.paper);document.body.classList.toggle('typing-mode',!!s.typingMode);const px=(k,v)=>document.documentElement.style.setProperty(k,v+'px');px('--sheetwidth',s.sheetWidth||1120);px('--treewidth',s.treeWidth||198);px('--editorheight',s.editorHeight||850);px('--editpad',s.editorPadding||42);document.documentElement.style.setProperty('--indent',s.autoIndent?'0em':(s.indent||0)+'em');document.body.classList.toggle('writer-wide',writerMode==='wide'||writerMode==='default'&&!!s.wideDefault);document.body.classList.toggle('writer-max',writerMode==='max');}
-function setView(v){if(state.view==='reading'&&v!=='reading')stopReaderSpeech();if(v==='library')stashBookPosition();if(proj()&&['dashboard','editor','reading','outline','mindmap','sceneStudio','memory','revision','dataCenter','advancedSearch','storyCalendar','linkCenter','chapterBatch','characterTracker','usageStudio','focusTimer','assets','publishing','syncStudio','scenes','characters','relations','timeline','lore','notes','tasks','stats','ai'].includes(v)){proj().workspace.lastView=v;}state.view=v;document.body.classList.toggle('reader-wide',false);if(v!=='editor'){document.body.classList.remove('assistant-open');editorFocus=false;editorReading=false;editorReference=false;document.body.classList.remove('focus','reader-mode','reference-mode')}$('#sidebar').classList.remove('mobileopen');render();mark()}
+function setView(v){if(v!=='editor'&&document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(()=>{});}if(state.view==='reading'&&v!=='reading')stopReaderSpeech();if(v==='library')stashBookPosition();if(proj()&&['dashboard','editor','reading','outline','mindmap','sceneStudio','memory','revision','dataCenter','advancedSearch','storyCalendar','linkCenter','chapterBatch','characterTracker','usageStudio','focusTimer','assets','publishing','syncStudio','scenes','characters','relations','timeline','lore','notes','tasks','stats','ai'].includes(v)){proj().workspace.lastView=v;}state.view=v;document.body.classList.toggle('reader-wide',false);if(v!=='editor'){document.body.classList.remove('assistant-open');editorFocus=false;editorReading=false;editorReference=false;document.body.classList.remove('focus','reader-mode','reference-mode')}$('#sidebar').classList.remove('mobileopen');render();mark()}
 function stashBookPosition(){const old=proj();if(!old)return;normalize(old);old.workspace.lastChapterId=state.activeChapterId;old.workspace.lastWorldId=state.activeWorldId;if(['dashboard','editor','reading','outline','mindmap','sceneStudio','memory','revision','dataCenter','advancedSearch','storyCalendar','linkCenter','chapterBatch','characterTracker','usageStudio','focusTimer','assets','publishing','syncStudio','scenes','characters','relations','timeline','lore','notes','tasks','stats','ai'].includes(state.view))old.workspace.lastView=state.view;}
 function selectProject(id,resume=false){stopReaderSpeech();if(!state.projects.some(p=>p.id===id))return;stashBookPosition();state.activeProjectId=id;const p=normalize(proj());state.activeChapterId=p.chapters.some(c=>c.id===p.workspace.lastChapterId)?p.workspace.lastChapterId:p.chapters[0]?.id||null;state.activeWorldId=p.worlds.some(w=>w.id===p.workspace.lastWorldId)?p.workspace.lastWorldId:p.chapters.find(c=>c.id===state.activeChapterId)?.worldId||p.worlds[0]?.id||null;state.view=resume&&p.workspace.lastView?p.workspace.lastView:'dashboard';editorFocus=false;editorReading=false;editorReference=false;document.body.classList.remove('focus','reader-mode','reference-mode','assistant-open');libraryFilter='all';sceneFilter='all';if(p.workspace.preferredApiId&&typeof apiProfiles!=='undefined'&&apiProfiles.some(a=>a.id===p.workspace.preferredApiId)){activeApiId=p.workspace.preferredApiId;}applySettings();update(resume?'已切换到《'+p.title+'》':'已进入《'+p.title+'》的独立工作区');}
 
@@ -1414,7 +1414,51 @@ function refreshReader(){const c=chap(),host=$('#readPreview');if(!host||!c)retu
 function toggleReader(){if(state.view!=='editor')return;if(editorFocus)exitEditorFocus();editorReading=!editorReading;document.body.classList.toggle('reader-mode',editorReading);const b=$('#readerBtn');if(b){b.classList.toggle('mode-on',editorReading);b.setAttribute('aria-pressed',String(editorReading))}if(editorReading){refreshReader();toast('阅读预览：原文不会被修改')}else{$('#edBody')?.focus({preventScroll:true});toast('已返回写作')}}
 function toggleReference(){if(state.view!=='editor')return;if(editorFocus)exitEditorFocus();editorReference=!editorReference;document.body.classList.toggle('reference-mode',editorReference);const pane=$('#referencePane');if(pane)pane.style.top=editorReference?($('.editor-head')?.offsetHeight||170)+'px':'';const b=$('#refBtn');if(b){b.classList.toggle('mode-on',editorReference);b.setAttribute('aria-pressed',String(editorReference))}}
 function exitEditorFocus(){editorFocus=false;document.body.classList.remove('focus');if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{})}
-function toggleEditorFocus(){if(state.view!=='editor')return;if(editorFocus){exitEditorFocus();toast('已退出专注，正文保留');return}editorReading=false;editorReference=false;document.body.classList.remove('reader-mode','reference-mode');$('#readerBtn')?.classList.remove('mode-on');$('#refBtn')?.classList.remove('mode-on');editorFocus=true;document.body.classList.add('focus');/* 用 CSS 铺满可用视口，避免个别浏览器进入系统级全屏后无法稳定退出 */if(window.matchMedia('(pointer:fine)').matches)$('#edBody')?.focus({preventScroll:true});toast('已进入满屏写作 · Esc 或右上角退出')}
+/* V9.5.4：专注模式不仅隐藏网站工具栏，也在允许的浏览器中请求真正的系统全屏。
+   浏览器若拒绝该请求，不伪称“已全屏”，改为展示可行的桌面应用使用方法。 */
+function v954FullscreenHelp(){
+ const box=document.getElementById('dialog');
+ const shade=document.getElementById('modal');
+ if(!box||!shade){toast('当前浏览器无法隐藏工具栏；可以用 Chrome 安装墨间到手机桌面');return;}
+ box.innerHTML='<h2>当前浏览器未能进入真正全屏</h2>'
+  +'<p>专注模式已隐藏墨间内部工具栏，但顶部标题栏和底部返回按钮由手机浏览器控制，网页不能强行关闭。</p>'
+  +'<div style="font-size:14px;line-height:2;color:var(--ink);margin:12px 0 18px">'
+  +'<b>推荐一次设置，以后直接全屏写：</b>'
+  +'<div>① 在手机 Chrome 中打开墨间原网址</div>'
+  +'<div>② 点右上角 ⋮ →「添加到主屏幕」或「安装应用」</div>'
+  +'<div>③ 返回手机桌面，点「墨间」图标进入</div>'
+  +'<div style="font-size:12px;color:var(--muted);margin-top:10px">安装到桌面不需要新账号；仍用原来的账号登录。先确认小说已同步，再切换浏览器。不同手机可显示不同菜单名称。</div></div>'
+  +'<div class="modal-actions"><button type="button" class="btn primary" data-action="close-modal">知道了</button></div>';
+ shade.classList.add('show');
+}
+function v954AskBrowserFullscreen(){
+ if(window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches){
+  toast('已进入桌面应用模式 · 专注写作');return;
+ }
+ const el=document.documentElement;
+ if(typeof el.requestFullscreen!=='function'||document.fullscreenEnabled===false){
+  v954FullscreenHelp();return;
+ }
+ try{
+  const pending=el.requestFullscreen({navigationUI:'hide'});
+  Promise.resolve(pending).then(()=>{
+   if(document.fullscreenElement)toast('已进入浏览器真正全屏');
+   else if(editorFocus)v954FullscreenHelp();
+  }).catch(()=>{
+   if(editorFocus)v954FullscreenHelp();
+  });
+ }catch(e){if(editorFocus)v954FullscreenHelp();}
+}
+function toggleEditorFocus(){
+ if(state.view!=='editor')return;
+ if(editorFocus){exitEditorFocus();toast('已退出专注，正文保留');return;}
+ editorReading=false;editorReference=false;
+ document.body.classList.remove('reader-mode','reference-mode');
+ $('#readerBtn')?.classList.remove('mode-on');$('#refBtn')?.classList.remove('mode-on');
+ editorFocus=true;document.body.classList.add('focus');
+ if(window.matchMedia('(pointer:fine)').matches)$('#edBody')?.focus({preventScroll:true});
+ v954AskBrowserFullscreen();
+}
 function insertStoryDivider(){if(state.view!=='editor')return;if(editorReading)toggleReader();const e=$('#edBody');if(!e)return;const a=e.selectionStart,b=e.selectionEnd;e.setRangeText('\n\n———\n\n',a,b,'end');e.dispatchEvent(new Event('input',{bubbles:true}));e.focus({preventScroll:true})}
 function findReplaceChapter(){const c=chap();if(!c)return;modal('本章查找与替换','可以定位一个词，也可以只对当前章节进行全部替换，不影响其他章节。',[{name:'find',label:'要查找的词语',value:''},{name:'replace',label:'替换成什么',value:''},{name:'mode',label:'操作',type:'select',items:['查找并定位','替换当前章节全部'],value:'查找并定位'}],v=>{if(!v.find){toast('请输入要查找的内容');return false}const t=c.content||'',n=t.split(v.find).length-1;if(n===0){toast('本章未找到该内容');return false}if(v.mode==='替换当前章节全部'){if(!confirm(`确定将本章的 ${n} 处「${v.find}」全部替换吗？建议先保存历史版本。`))return false;snapshot(false);c.content=t.split(v.find).join(v.replace);c.updatedAt=Date.now();toast(`已替换 ${n} 处`)}else{const ix=t.indexOf(v.find);editorReading=false;document.body.classList.remove('reader-mode');setTimeout(()=>{const ed=$('#edBody');if(ed){ed.focus({preventScroll:true});ed.setSelectionRange(ix,ix+v.find.length)}},50)}return true})}
 
