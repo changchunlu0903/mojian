@@ -676,6 +676,13 @@ body.nav-layer-open #sidebar{position:relative;z-index:60}
   #sidebar .nav-content > .nav-scroll > .navgroup:first-child > .navgroup-title {padding-top:8px!important;padding-bottom:5px!important;margin-top:0!important;}
   #sidebar .nav-content > .nav-scroll > .navgroup:first-child > .navlist {padding-top:0!important;}
 }
+
+/* V9.4.3: 手机导航紧贴顶部，DOM 层去除空导航头，CSS 保留二次防护。 */
+@media(max-width:950px){
+ #sidebar .nav-content>.navhead{display:none!important;}
+ #sidebar .nav-content>.nav-scroll{margin-top:0!important;padding-top:0!important;}
+ #sidebar .nav-content>.nav-scroll>.navgroup:first-child{margin-top:0!important;padding-top:0!important;}
+}
 </style>
 <link rel="manifest" href="./manifest.webmanifest"><style id="mojian-auth-style">
 body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointer-events:none;user-select:none}
@@ -934,7 +941,20 @@ function renderSidebar(){const p=proj(),inside=p&&state.view!=='library'&&!['tra
  }else{s+=navGroup('我的创作空间',nav('library','全部小说 · 总书库','grid',state.projects.length));s+=navGroup('工具与管理',nav('search','跨作品搜索','search')+navTool('export-all','备份全部小说','archive')+navTool('import','导入作品备份','download')+nav('trash','回收站','trash',state.trash.length)+nav('settings','全局偏好设置','settings')+(mojianAccount?.role==='admin'?`<button class="navitem" data-mojian-admin="open" title="账号管理（总号专用）">${ico('users')}<span class="navlabel">账号管理（总号）</span></button>`:''));}
  s+=`</div><div class="navfoot"><span>${inside?`<strong>${fmt(total(p))} 字</strong> · ${p.worlds.length} 个世界`:state.projects.length+' 本小说'}</span><small>定期备份作品，防止浏览器数据意外丢失</small>${inside?`<div class="tinyprog"><span style="width:${Math.min(100,total(p)/Math.max(1,p.goal)*100)}%"></span></div>`:''}</div></div>`;
  $('#sidebar').innerHTML=s;
-  $('#sidebar').dataset.mobileMenuLayout='compact-v942';
+ // V9.4.3: On phone/tablet menus, remove the unused heading node itself.
+ // CSS-only hiding left the heading in the DOM and was not reliable across every mobile view.
+ const mjCompactMenu=window.innerWidth<=950||(/iPhone|iPod|iPad|Android/i.test(navigator.userAgent)&&window.matchMedia('(pointer: coarse)').matches);
+ if(mjCompactMenu){
+   const mjHead=document.querySelector('#sidebar .nav-content > .navhead');
+   if(mjHead)mjHead.remove();
+   const mjScroll=document.querySelector('#sidebar .nav-content > .nav-scroll');
+   if(mjScroll){
+     mjScroll.style.marginTop='0';mjScroll.style.paddingTop='0';
+     const mjFirst=mjScroll.querySelector('.navgroup');
+     if(mjFirst){mjFirst.style.marginTop='0';mjFirst.style.paddingTop='0';}
+   }
+ }
+ $('#sidebar').dataset.mobileMenuLayout='compact-v943';
  restoreSidebarMenuScroll(inside?'book:'+p.id:'global');
 }
 
