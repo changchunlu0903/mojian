@@ -877,6 +877,52 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
 }
 
 </style>
+<style id="mojian-v953-writing-lock">
+
+/* V9.5.3 — Fixed writing cockpit on phones.
+   V9.5.2 assigned every #main an auto-y scrollbar, overriding writing mode's
+   intentionally overflow:hidden shell; iOS then rubber-banded the whole editor.
+   Only the actual manuscript textarea may scroll vertically, if it overflows. */
+@media (max-width: 660px){
+ html:has(body.studio-writing){height:100%;overflow:hidden!important;overscroll-behavior:none!important}
+ body.studio-writing{
+  position:fixed!important;inset:0!important;width:100%!important;
+  height:100dvh!important;max-height:100dvh!important;
+  margin:0!important;overflow:hidden!important;overscroll-behavior:none!important;
+ }
+ body.studio-writing #app{max-height:100dvh!important;min-height:0!important;overflow:hidden!important}
+ body.studio-writing #main.main{
+  overflow:hidden!important;overflow-x:hidden!important;overflow-y:hidden!important;
+  overscroll-behavior:none!important;min-height:0!important;
+ }
+ body.studio-writing .editor-shell,body.studio-writing .editor-central{
+  min-height:0!important;overflow:hidden!important;overscroll-behavior:none!important;
+ }
+ body.studio-writing .editor-shell{height:100%!important;max-height:100%!important}
+ body.studio-writing .editor-central{height:100%!important;max-height:100%!important}
+ body.studio-writing .ed-scroll{
+  flex:1 1 0!important;min-height:0!important;
+  overflow:hidden!important;overflow-x:hidden!important;overflow-y:hidden!important;
+  overscroll-behavior:none!important;
+ }
+ body.studio-writing .sheet{overflow:hidden!important;min-height:0!important}
+ body.studio-writing #edBody.texteditor{
+  min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:none!important;-webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+ }
+ body.studio-writing .editor-head,body.studio-writing .ed-bottom,
+ body.studio-writing .studio-context{
+  flex-shrink:0;overscroll-behavior:none;touch-action:pan-x;
+ }
+ body.studio-writing .novel-format-bar,
+ body.studio-writing .v95-mobile-chapters,
+ body.studio-writing .editor-head>.edtoolbar{touch-action:pan-x!important}
+ body.studio-writing .ed-aside .ai-messages{overflow-y:auto!important;overscroll-behavior:contain}
+ body.studio-writing .mo-sheet-body{overflow-y:auto!important}
+}
+
+</style>
 </head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
@@ -2625,6 +2671,50 @@ const mojianInitReady=init();
  },{passive:false,capture:true});
  document.addEventListener('touchend',()=>{gesture=null},{passive:true});
  document.addEventListener('touchcancel',()=>{gesture=null},{passive:true});
+})();
+
+</script>
+<script id="mojian-v953-touch-lock">
+
+/* V9.5.3: prevent blank editor swipes from scrolling Safari's entire page.
+   Long manuscripts still pan within the textarea. */
+(function(){
+ 'use strict';
+ // Listeners are inert unless mobile writing mode is active.
+ let initial=null;
+ function active(){return matchMedia('(max-width:660px)').matches && document.body.classList.contains('studio-writing')}
+ function editable(t){return t instanceof Element && t.closest('#edBody.texteditor')}
+ function insideScrollable(t){return t instanceof Element && t.closest('.novel-format-bar,.editor-head>.edtoolbar,.v95-mobile-chapters,.ed-aside,.ai-messages,.mo-sheet-body,.mo-mobile-sheet,.nav,.modalshade,.v95-time-shade,.reader-pane,.mind-viewport,.mindcanvas,.mind-canvas')}
+ document.addEventListener('touchstart',e=>{
+  initial=null;
+  if(!active()||e.touches.length!==1)return;
+  const t=e.target;
+  if(!(t instanceof Element) || !t.closest('#main'))return;
+  initial={target:t,x:e.touches[0].clientX,y:e.touches[0].clientY};
+ },{capture:true,passive:true});
+ document.addEventListener('touchmove',e=>{
+  if(!initial||!active()||!e.cancelable||e.touches.length!==1)return;
+  const t=initial.target;
+  if(!t.isConnected)return;
+  const dx=e.touches[0].clientX-initial.x,dy=e.touches[0].clientY-initial.y;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<9)return;
+  if(insideScrollable(t))return;
+  if(editable(t)){
+   const ed=document.getElementById('edBody');
+   if(!ed)return;
+   // Allow native scrolling only while text overflows vertically.
+   // Keep native text selection when a selection gesture is active.
+   if(ed.selectionStart!==ed.selectionEnd)return;
+   const extra=ed.scrollHeight-ed.clientHeight;
+   if(extra>3){
+    if(Math.abs(dy)>Math.abs(dx) &&
+       ((dy<0 && ed.scrollTop<extra-2)||(dy>0 && ed.scrollTop>2)))return;
+   }
+  }
+  e.preventDefault();
+ },{capture:true,passive:false});
+ document.addEventListener('touchend',()=>{initial=null},{passive:true});
+ document.addEventListener('touchcancel',()=>{initial=null},{passive:true});
 })();
 
 </script>
