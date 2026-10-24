@@ -988,7 +988,7 @@ body.mojan-locked{overflow:hidden}body.mojan-locked #app{filter:blur(7px);pointe
  body.studio-writing.focus .v958-focus-font{display:inline-flex!important}
 }
 </style>
-</head><body class="mojan-locked">
+<meta name="mojian-build" content="9.5.9-login-hotfix"></head><body class="mojan-locked">
 <div id="mojianAuthWall" role="dialog" aria-modal="true" aria-label="墨间私人书库登录"><div class="mojan-card"><h1>正在连接私人书库…</h1></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
@@ -1473,7 +1473,7 @@ function showEditor(){const p=proj();if(!p)return setView('library');if(!p.chapt
  document.body.classList.toggle('reader-mode',editorReading);document.body.classList.toggle('reference-mode',editorReference);
  if(editorReading)refreshReader();
  $('#edBody').addEventListener('input',e=>{const newCount=words(e.target.value),oldCount=words(c.content),delta=Math.max(0,newCount-oldCount);v95UndoInput(p,c,e.target.value);c.content=e.target.value;c.updatedAt=Date.now();p.updatedAt=c.updatedAt;mojianGuardDraft(p,c);v95ScheduleHistory();recordWords(p,delta);$('#edCount').textContent=fmt(newCount)+' 字';$('#bottomCount').textContent='本章 '+fmt(newCount)+' 字';if($('#focusCount'))$('#focusCount').textContent=fmt(newCount)+' 字';$('#chapterProgress')&&($('#chapterProgress').textContent='完成 '+Math.min(100,Math.round(newCount/Math.max(1,state.settings.chapterGoal)*100))+'%');/* 输入不触发缩放、不改变编辑器尺寸，也不强制重定位滚动条 */mark()});
- $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();v958BindEditor();restoreChapterMenuScroll('book:'+p.id);v95EditorReady();
+ $('#edTitle').addEventListener('input',e=>{c.title=e.target.value;c.updatedAt=Date.now();mark()});$('#edSynopsis')?.addEventListener('input',e=>{c.synopsis=e.target.value;$('#referenceSynopsis').textContent=c.synopsis||'本章暂无梗概';mark()});$('#edStatus')?.addEventListener('change',e=>{c.status=e.target.value;mark();toast('章节状态已更新')});$('#edArcStage')?.addEventListener('change',e=>{c.arcStage=e.target.value;mark()});$('#treeSearch').addEventListener('input',e=>{$('#editorTree').innerHTML=editorTree(e.target.value)});bindAssistant();bindNovelEditor();try{if(typeof window.v958BindEditor==='function')window.v958BindEditor()}catch(e){console.warn('正文排版工具初始化未完成',e)}restoreChapterMenuScroll('book:'+p.id);v95EditorReady();
 }
 function refreshReader(){const c=chap(),host=$('#readPreview');if(!host||!c)return;const paras=c.content.replace(/\r\n?/g,'\n').split('\n').map(x=>`<p style="${/^[\u3000 \t]+/.test(x)?'text-indent:0':''}">${escapeHTML(x)||'&nbsp;'}</p>`).join('');host.innerHTML=`<h2>${escapeHTML(c.title||'未命名章节')}</h2>${paras||'<p class="reader-empty">这章还没有正文。点击“阅读”即可切回写作。</p>'}`;host.scrollTop=0}
 function toggleReader(){if(state.view!=='editor')return;if(editorFocus)exitEditorFocus();editorReading=!editorReading;document.body.classList.toggle('reader-mode',editorReading);const b=$('#readerBtn');if(b){b.classList.toggle('mode-on',editorReading);b.setAttribute('aria-pressed',String(editorReading))}if(editorReading){refreshReader();toast('阅读预览：原文不会被修改')}else{$('#edBody')?.focus({preventScroll:true});toast('已返回写作')}}
@@ -2615,6 +2615,118 @@ document.addEventListener('click',async e=>{
   }
  }catch(err){const status=document.getElementById('mojanManageMsg');if(status)status.textContent=err.message;else toast(err.message)}
 });
+
+/* 墨间 V9.5.9 启动修复：在首次 init() 与账号加载之前注册字号/回车辅助。 */
+/* 2026-10-23: show the newly empty line immediately after Enter; no phantom
+   newline or permanent padding is inserted into the manuscript. */
+(function(){
+ 'use strict';
+ const MIN=14,MAX=32;
+ function editor(){return document.getElementById('edBody')}
+ function currentFontSize(){
+  const p=typeof proj==='function'?proj():null;
+  const base=Number(state?.settings?.fontSize)||19;
+  const local=Number(p?.workspace?.fontSize)||0;
+  return Math.max(MIN,Math.min(MAX,local||base));
+ }
+ function updateLabels(){
+  const size=currentFontSize();
+  document.querySelectorAll('[data-v958-font-value]').forEach(el=>el.textContent=size+'px');
+ }
+ function setFontSize(action){
+  if(state?.view!=='editor')return;
+  const p=proj();if(!p)return;
+  p.workspace??={};
+  const oldSize=currentFontSize();
+  const next=action==='reset'?0:Math.min(MAX,Math.max(MIN,oldSize+(action==='plus'?1:-1)));
+  if(next!==0&&oldSize===next)return;
+  const ed=editor(),top=ed?.scrollTop||0;
+  p.workspace.fontSize=next; // existing per-book field, already included in normal backup / cloud sync
+  applySettings();
+  updateLabels();
+  if(ed){
+   ed.scrollTop=top;
+   const caret=ed.selectionStart;
+   if(document.activeElement===ed)v958KeepCaretLineVisible(ed,caret);
+  }
+  mark();
+ }
+ /* Mirror matches textarea's font and available line width, including wrapped
+    lines. A trailing newline has a real caret line even before first character. */
+ function caretTop(ed,caret){
+  const style=getComputedStyle(ed),mirror=document.createElement('div');
+  mirror.setAttribute('aria-hidden','true');
+  const props=['fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing',
+    'wordSpacing','textAlign','direction','tabSize','textIndent','paddingTop','paddingRight',
+    'paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth',
+    'borderLeftWidth','boxSizing'];
+  mirror.style.position='fixed';mirror.style.visibility='hidden';mirror.style.pointerEvents='none';
+  mirror.style.top='-100000px';mirror.style.left='0';mirror.style.width=ed.clientWidth+'px';
+  mirror.style.height='auto';mirror.style.minHeight='0';mirror.style.maxHeight='none';
+  mirror.style.whiteSpace='pre-wrap';mirror.style.overflowWrap='anywhere';
+  mirror.style.wordWrap='break-word';mirror.style.wordBreak=style.wordBreak;
+  mirror.style.border='0';mirror.style.overflow='visible';
+  props.forEach(k=>{mirror.style[k]=style[k]});
+  // Preserve white-space: a zero-width marker on the new line lets us measure
+  // the empty line, rather than waiting for a typed character to create one.
+  mirror.appendChild(document.createTextNode(ed.value.slice(0,caret)));
+  const marker=document.createElement('span');marker.textContent='\u200b';mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+  const y=marker.getBoundingClientRect().top-mirror.getBoundingClientRect().top;
+  const lh=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*2;
+  mirror.remove();
+  return {top:y,bottom:y+lh};
+ }
+ function keepCaretLineVisible(ed,caret){
+  if(!ed||!ed.isConnected||state?.view!=='editor')return;
+  const pos=caretTop(ed,caret??ed.selectionStart);
+  // Editor content is scrollable only if text exceeds the viewport. Do not
+  // scroll past the last *actual* newline or typed character.
+  const visibleBottom=ed.scrollTop+ed.clientHeight-3;
+  const visibleTop=ed.scrollTop+parseFloat(getComputedStyle(ed).paddingTop||'0');
+  const max=Math.max(0,ed.scrollHeight-ed.clientHeight);
+  if(pos.bottom>visibleBottom)ed.scrollTop=Math.min(max,Math.max(0,ed.scrollTop+pos.bottom-visibleBottom));
+  else if(pos.top<visibleTop)ed.scrollTop=Math.max(0,pos.top-4);
+  // Browsers sometimes clamp internally after their own textarea layout pass.
+  ed.scrollTop=Math.max(0,Math.min(max,ed.scrollTop));
+ }
+ window.v958KeepCaretLineVisible=keepCaretLineVisible;
+ let pending=0;
+ function scheduleCaret(ed){
+  cancelAnimationFrame(pending);
+  const caret=ed.selectionStart;
+  pending=requestAnimationFrame(()=>{
+   if(ed!==editor()||!ed.isConnected)return;
+   keepCaretLineVisible(ed,caret);
+   if(typeof v95StoreCaret==='function')v95StoreCaret();
+  });
+ }
+ window.v958BindEditor=function(){
+  const ed=editor();if(!ed)return;
+  updateLabels();
+  ed.addEventListener('keydown',e=>{
+   if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229)scheduleCaret(ed);
+  });
+  ed.addEventListener('beforeinput',e=>{
+   if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak'){
+    // Some Android input methods dispatch beforeinput/input without keydown.
+    setTimeout(()=>scheduleCaret(ed),0);
+   }
+  });
+  ed.addEventListener('input',e=>{
+   const previous=ed.value.slice(0,ed.selectionStart);
+   const line=previous.slice(previous.lastIndexOf('\n')+1);
+   if((e.inputType==='insertParagraph'||e.inputType==='insertLineBreak') ||
+      (previous.includes('\n') && /^[\u3000 \t]*$/.test(line)))scheduleCaret(ed);
+  });
+ };
+ document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-v958-font]');if(!b)return;
+  e.preventDefault();
+  setFontSize(b.dataset.v958Font);
+ });
+})();
+
 setTimeout(mojianAuthBoot,100);
 const mojianInitReady=init();
 })();
@@ -2992,115 +3104,4 @@ const mojianInitReady=init();
 })();
 </script>
 
-<script id="mojian-v958-newline-and-font">
-/* 2026-10-23: show the newly empty line immediately after Enter; no phantom
-   newline or permanent padding is inserted into the manuscript. */
-(function(){
- 'use strict';
- const MIN=14,MAX=32;
- function editor(){return document.getElementById('edBody')}
- function currentFontSize(){
-  const p=typeof proj==='function'?proj():null;
-  const base=Number(state?.settings?.fontSize)||19;
-  const local=Number(p?.workspace?.fontSize)||0;
-  return Math.max(MIN,Math.min(MAX,local||base));
- }
- function updateLabels(){
-  const size=currentFontSize();
-  document.querySelectorAll('[data-v958-font-value]').forEach(el=>el.textContent=size+'px');
- }
- function setFontSize(action){
-  if(state?.view!=='editor')return;
-  const p=proj();if(!p)return;
-  p.workspace??={};
-  const oldSize=currentFontSize();
-  const next=action==='reset'?0:Math.min(MAX,Math.max(MIN,oldSize+(action==='plus'?1:-1)));
-  if(next!==0&&oldSize===next)return;
-  const ed=editor(),top=ed?.scrollTop||0;
-  p.workspace.fontSize=next; // existing per-book field, already included in normal backup / cloud sync
-  applySettings();
-  updateLabels();
-  if(ed){
-   ed.scrollTop=top;
-   const caret=ed.selectionStart;
-   if(document.activeElement===ed)v958KeepCaretLineVisible(ed,caret);
-  }
-  mark();
- }
- /* Mirror matches textarea's font and available line width, including wrapped
-    lines. A trailing newline has a real caret line even before first character. */
- function caretTop(ed,caret){
-  const style=getComputedStyle(ed),mirror=document.createElement('div');
-  mirror.setAttribute('aria-hidden','true');
-  const props=['fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing',
-    'wordSpacing','textAlign','direction','tabSize','textIndent','paddingTop','paddingRight',
-    'paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth',
-    'borderLeftWidth','boxSizing'];
-  mirror.style.position='fixed';mirror.style.visibility='hidden';mirror.style.pointerEvents='none';
-  mirror.style.top='-100000px';mirror.style.left='0';mirror.style.width=ed.clientWidth+'px';
-  mirror.style.height='auto';mirror.style.minHeight='0';mirror.style.maxHeight='none';
-  mirror.style.whiteSpace='pre-wrap';mirror.style.overflowWrap='anywhere';
-  mirror.style.wordWrap='break-word';mirror.style.wordBreak=style.wordBreak;
-  mirror.style.border='0';mirror.style.overflow='visible';
-  props.forEach(k=>{mirror.style[k]=style[k]});
-  // Preserve white-space: a zero-width marker on the new line lets us measure
-  // the empty line, rather than waiting for a typed character to create one.
-  mirror.appendChild(document.createTextNode(ed.value.slice(0,caret)));
-  const marker=document.createElement('span');marker.textContent='\u200b';mirror.appendChild(marker);
-  document.body.appendChild(mirror);
-  const y=marker.getBoundingClientRect().top-mirror.getBoundingClientRect().top;
-  const lh=parseFloat(style.lineHeight)||parseFloat(style.fontSize)*2;
-  mirror.remove();
-  return {top:y,bottom:y+lh};
- }
- function keepCaretLineVisible(ed,caret){
-  if(!ed||!ed.isConnected||state?.view!=='editor')return;
-  const pos=caretTop(ed,caret??ed.selectionStart);
-  // Editor content is scrollable only if text exceeds the viewport. Do not
-  // scroll past the last *actual* newline or typed character.
-  const visibleBottom=ed.scrollTop+ed.clientHeight-3;
-  const visibleTop=ed.scrollTop+parseFloat(getComputedStyle(ed).paddingTop||'0');
-  const max=Math.max(0,ed.scrollHeight-ed.clientHeight);
-  if(pos.bottom>visibleBottom)ed.scrollTop=Math.min(max,Math.max(0,ed.scrollTop+pos.bottom-visibleBottom));
-  else if(pos.top<visibleTop)ed.scrollTop=Math.max(0,pos.top-4);
-  // Browsers sometimes clamp internally after their own textarea layout pass.
-  ed.scrollTop=Math.max(0,Math.min(max,ed.scrollTop));
- }
- window.v958KeepCaretLineVisible=keepCaretLineVisible;
- let pending=0;
- function scheduleCaret(ed){
-  cancelAnimationFrame(pending);
-  const caret=ed.selectionStart;
-  pending=requestAnimationFrame(()=>{
-   if(ed!==editor()||!ed.isConnected)return;
-   keepCaretLineVisible(ed,caret);
-   if(typeof v95StoreCaret==='function')v95StoreCaret();
-  });
- }
- window.v958BindEditor=function(){
-  const ed=editor();if(!ed)return;
-  updateLabels();
-  ed.addEventListener('keydown',e=>{
-   if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229)scheduleCaret(ed);
-  });
-  ed.addEventListener('beforeinput',e=>{
-   if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak'){
-    // Some Android input methods dispatch beforeinput/input without keydown.
-    setTimeout(()=>scheduleCaret(ed),0);
-   }
-  });
-  ed.addEventListener('input',e=>{
-   const previous=ed.value.slice(0,ed.selectionStart);
-   const line=previous.slice(previous.lastIndexOf('\n')+1);
-   if((e.inputType==='insertParagraph'||e.inputType==='insertLineBreak') ||
-      (previous.includes('\n') && /^[\u3000 \t]*$/.test(line)))scheduleCaret(ed);
-  });
- };
- document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-v958-font]');if(!b)return;
-  e.preventDefault();
-  setFontSize(b.dataset.v958Font);
- });
-})();
-</script>
 </body></html>
